@@ -23,6 +23,10 @@ struct MenuBarContentView: View {
                 openWindow(id: "chat")
             }
             Divider()
+            Button("Check for Updates...") {
+                NSApp.sendAction(#selector(AppDelegate.checkForUpdates), to: nil, from: nil)
+            }
+            Divider()
             Button("Quit Perspective Server") {
                 NSApplication.shared.terminate(nil)
             }

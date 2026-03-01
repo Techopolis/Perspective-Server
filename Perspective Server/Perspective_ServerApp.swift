@@ -9,14 +9,33 @@ import SwiftUI
 
 #if os(macOS)
 import AppKit
+import Sparkle
 
-class AppDelegate: NSObject, NSApplicationDelegate {
-    
+@MainActor
+class AppDelegate: NSObject, NSApplicationDelegate, SPUStandardUserDriverDelegate {
+    private(set) var updaterController: SPUStandardUpdaterController!
+
+    override init() {
+        super.init()
+        self.updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: self)
+    }
+
+    var supportsGentleScheduledUpdateReminders: Bool { true }
+
+    func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem, state: SPUUserUpdateState) {
+        if state.userInitiated { return }
+        NSApp.dockTile.badgeLabel = "Update"
+    }
+
+    func standardUserDriverDidReceiveUserAttention(forUpdate update: SUAppcastItem) {
+        NSApp.dockTile.badgeLabel = nil
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Disable window state restoration to prevent previously opened windows from appearing
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
     }
-    
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         // When app is clicked in dock and no windows are visible, open the dashboard
         if !flag {
@@ -24,13 +43,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         return true
     }
-    
+
     @objc func openChatWindow() {
         NotificationCenter.default.post(name: .openChatWindow, object: nil)
     }
-    
+
     @objc func openDashboard() {
         NotificationCenter.default.post(name: .openDashboard, object: nil)
+    }
+
+    @objc func checkForUpdates() {
+        updaterController.checkForUpdates(nil)
     }
 }
 
@@ -80,6 +103,11 @@ struct Perspective_ServerApp: App {
         .defaultLaunchBehavior(.suppressed)
         .commands {
             ChatCommands()
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates...") {
+                    NSApp.sendAction(#selector(AppDelegate.checkForUpdates), to: nil, from: nil)
+                }
+            }
             CommandGroup(after: .newItem) {
                 Button("Open Chat Window") {
                     NSApp.sendAction(#selector(AppDelegate.openChatWindow), to: nil, from: nil)

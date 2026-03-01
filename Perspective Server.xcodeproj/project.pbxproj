@@ -6,13 +6,30 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		F1A2B3C40000000000000003 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = F1A2B3C40000000000000002 /* Sparkle */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		9DF1C0842E774697000D654F /* Perspective Server.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Perspective Server.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		F1A2B3C40000000000000004 /* Exceptions for "Perspective Server" folder in "Perspective Server" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 9DF1C0832E774697000D654F /* Perspective Server */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9DF1C0862E774697000D654F /* Perspective Server */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				F1A2B3C40000000000000004 /* Exceptions for "Perspective Server" folder in "Perspective Server" target */,
+			);
 			path = "Perspective Server";
 			sourceTree = "<group>";
 		};
@@ -23,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F1A2B3C40000000000000003 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +83,7 @@
 			);
 			name = "Perspective Server";
 			packageProductDependencies = (
+				F1A2B3C40000000000000002 /* Sparkle */,
 			);
 			productName = "Perspective Server";
 			productReference = 9DF1C0842E774697000D654F /* Perspective Server.app */;
@@ -98,6 +117,9 @@
 			productRefGroup = 9DF1C0852E774697000D654F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				F1A2B3C40000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			targets = (
 				9DF1C0832E774697000D654F /* Perspective Server */,
 			);
@@ -255,6 +277,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Perspective Server/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Perspective Server";
 				INFOPLIST_KEY_CFBundleName = "Perspective Server";
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -302,6 +325,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Perspective Server/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Perspective Server";
 				INFOPLIST_KEY_CFBundleName = "Perspective Server";
 				INFOPLIST_KEY_LSUIElement = YES;
@@ -358,6 +382,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F1A2B3C40000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F1A2B3C40000000000000002 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F1A2B3C40000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9DF1C07C2E774697000D654F /* Project object */;
 }

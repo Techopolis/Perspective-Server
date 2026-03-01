@@ -269,7 +269,8 @@ actor LocalHTTPServer {
 
         // Ollama-compatible: GET /api/version
         if (request.method == "GET" || request.method == "HEAD") && path == "/api/version" {
-            let obj = ["version": "0.1.0"] // minimal version string; adjust as needed
+            let bundleVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+            let obj = ["version": bundleVersion]
             let data = (try? JSONSerialization.data(withJSONObject: obj, options: [])) ?? Data()
             let resp = HTTPResponse(status: 200, headers: [
                 "Content-Type": "application/json",
@@ -741,7 +742,7 @@ extension LocalHTTPServer {
 
 // MARK: - Minimal HTTP over TCP
 
-private final class ConnectionWrapper: @unchecked Sendable, Hashable {
+nonisolated private final class ConnectionWrapper: @unchecked Sendable, Hashable {
     static func == (lhs: ConnectionWrapper, rhs: ConnectionWrapper) -> Bool { lhs === rhs }
     func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) }
 
@@ -914,14 +915,14 @@ private final class ConnectionWrapper: @unchecked Sendable, Hashable {
 
 // MARK: - HTTP Types
 
-struct HTTPRequest: Sendable {
+nonisolated struct HTTPRequest: Sendable {
     let method: String
     let path: String
     let headers: [String: String]
     let bodyData: Data
 }
 
-struct HTTPResponse {
+nonisolated struct HTTPResponse: Sendable {
     let status: Int
     let headers: [String: String]
     let body: Data
@@ -951,12 +952,12 @@ struct HTTPResponse {
 
 // MARK: - Streaming Support
 
-enum ServerResponse: Sendable {
+nonisolated enum ServerResponse: Sendable {
     case normal(HTTPResponse)
     case stream(HTTPStreamResponse)
 }
 
-final class HTTPStreamResponse: @unchecked Sendable {
+nonisolated final class HTTPStreamResponse: @unchecked Sendable {
     typealias Emitter = StreamingEmitter
 
     let headers: [String: String]
@@ -1017,7 +1018,7 @@ final class HTTPStreamResponse: @unchecked Sendable {
     }
 }
 
-enum StreamChunker {
+nonisolated enum StreamChunker: Sendable {
     static func chunk(text: String, size: Int = 64) -> [String] {
         guard !text.isEmpty else { return [] }
         var chunks: [String] = []
@@ -1031,7 +1032,7 @@ enum StreamChunker {
     }
 }
 
-enum HTTPRequestParser {
+nonisolated enum HTTPRequestParser: Sendable {
     static func parse(data: Data) -> HTTPRequest? {
         guard let text = String(data: data, encoding: .utf8) else { return nil }
         let parts = text.components(separatedBy: "\r\n\r\n")

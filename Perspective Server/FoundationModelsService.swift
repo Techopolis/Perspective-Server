@@ -14,7 +14,7 @@ import FoundationModels
 
 // MARK: - OpenAI-Compatible Types
 
-struct ChatCompletionRequest: Codable {
+nonisolated struct ChatCompletionRequest: Codable, Sendable {
     struct Message: Codable {
         let role: String
         let content: String
@@ -69,12 +69,12 @@ struct ChatCompletionRequest: Codable {
 }
 
 // Content part per OpenAI structured content. We only use text; non-text parts are ignored.
-private struct OAContentPart: Codable {
+nonisolated private struct OAContentPart: Codable, Sendable {
     let type: String?
     let text: String?
 }
 
-struct ChatCompletionResponse: Codable {
+nonisolated struct ChatCompletionResponse: Codable, Sendable {
     struct Choice: Codable {
         struct Message: Codable {
             let role: String
@@ -94,18 +94,18 @@ struct ChatCompletionResponse: Codable {
 
 // MARK: - OpenAI Tools Types
 
-struct OAITool: Codable {
+nonisolated struct OAITool: Codable, Sendable {
     let type: String // expecting "function"
     let function: OAIFunction?
 }
 
-struct OAIFunction: Codable {
+nonisolated struct OAIFunction: Codable, Sendable {
     let name: String
     let description: String?
     let parameters: JSONValue? // arbitrary JSON schema, not used by executor
 }
 
-enum ToolChoice: Codable {
+nonisolated enum ToolChoice: Codable, Sendable {
     case none
     case auto
     case required
@@ -145,7 +145,7 @@ enum ToolChoice: Codable {
 }
 
 // A minimal JSON value tree for decoding arbitrary tool parameter shapes
-enum JSONValue: Codable {
+nonisolated enum JSONValue: Codable, Sendable {
     case string(String)
     case number(Double)
     case bool(Bool)
@@ -193,7 +193,7 @@ enum JSONValue: Codable {
     }
 }
 
-struct DynamicCodingKeys: CodingKey {
+nonisolated struct DynamicCodingKeys: CodingKey, Sendable {
     var stringValue: String
     init?(stringValue: String) { self.stringValue = stringValue }
     var intValue: Int? { nil }
@@ -202,7 +202,7 @@ struct DynamicCodingKeys: CodingKey {
 
 // MARK: - OpenAI-Compatible Text Completions
 
-struct TextCompletionRequest: Codable {
+nonisolated struct TextCompletionRequest: Codable, Sendable {
     let model: String
     let prompt: String
     let temperature: Double?
@@ -226,7 +226,7 @@ struct TextCompletionRequest: Codable {
     }
 }
 
-struct TextCompletionResponse: Codable {
+nonisolated struct TextCompletionResponse: Codable, Sendable {
     struct Choice: Codable {
         let text: String
         let index: Int
@@ -242,14 +242,14 @@ struct TextCompletionResponse: Codable {
 
 // MARK: - OpenAI-Compatible Models
 
-struct OpenAIModel: Codable {
+nonisolated struct OpenAIModel: Codable, Sendable {
     let id: String
     let object: String // "model"
     let created: Int
     let owned_by: String
 }
 
-struct OpenAIModelList: Codable {
+nonisolated struct OpenAIModelList: Codable, Sendable {
     let object: String // "list"
     let data: [OpenAIModel]
 }
@@ -347,7 +347,7 @@ actor SessionManager {
 // MARK: - Foundation Models Service
 
 /// A service that bridges OpenAI-compatible requests to Apple's on-device Foundation Models.
-final class FoundationModelsService: @unchecked Sendable {
+nonisolated final class FoundationModelsService: @unchecked Sendable {
     static let shared = FoundationModelsService()
     private let logger = Logger(subsystem: "com.example.PerspectiveServer", category: "FoundationModelsService")
     private let createdEpoch: Int = Int(Date().timeIntervalSince1970)
@@ -1297,7 +1297,7 @@ extension FoundationModelsService {
 
 // MARK: - Tools Registry
 
-private final class ToolsRegistry: @unchecked Sendable {
+nonisolated private final class ToolsRegistry: @unchecked Sendable {
     static let shared = ToolsRegistry()
     private let logger = Logger(subsystem: "com.example.PerspectiveIntelligence", category: "ToolsRegistry")
     private let fileTools = FileToolsManager.shared

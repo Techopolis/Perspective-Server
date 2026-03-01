@@ -16,7 +16,7 @@ import FoundationModels
 
 /// Manages file operation tools that can be used by the Foundation Models framework.
 /// Provides read, write, edit, delete, move, and list operations on files and directories.
-final class FileToolsManager: @unchecked Sendable {
+nonisolated final class FileToolsManager: @unchecked Sendable {
     static let shared = FileToolsManager()
     
     private let logger = Logger(subsystem: "com.example.PerspectiveIntelligence", category: "FileTools")
@@ -102,7 +102,7 @@ final class FileToolsManager: @unchecked Sendable {
     
     // MARK: - Path Validation
     
-    enum FileToolError: Error, LocalizedError {
+    nonisolated enum FileToolError: Error, LocalizedError {
         case pathNotAllowed(String)
         case pathNotFound(String)
         case isDirectory(String)
@@ -383,63 +383,63 @@ final class FileToolsManager: @unchecked Sendable {
 
 // MARK: - Result Types
 
-struct FileReadResult: Codable {
+nonisolated struct FileReadResult: Codable, Sendable {
     let path: String
     let content: String
     let size: Int
     let truncated: Bool
 }
 
-struct FileWriteResult: Codable {
+nonisolated struct FileWriteResult: Codable, Sendable {
     let path: String
     let bytesWritten: Int
     let created: Bool
 }
 
-struct FileEditResult: Codable {
+nonisolated struct FileEditResult: Codable, Sendable {
     let path: String
     let success: Bool
     let message: String
     let changesCount: Int
 }
 
-struct FileDeleteResult: Codable {
+nonisolated struct FileDeleteResult: Codable, Sendable {
     let path: String
     let deleted: Bool
     let wasDirectory: Bool
 }
 
-struct FileMoveResult: Codable {
+nonisolated struct FileMoveResult: Codable, Sendable {
     let sourcePath: String
     let destinationPath: String
     let success: Bool
 }
 
-struct FileCopyResult: Codable {
+nonisolated struct FileCopyResult: Codable, Sendable {
     let sourcePath: String
     let destinationPath: String
     let success: Bool
 }
 
-struct DirectoryItem: Codable {
+nonisolated struct DirectoryItem: Codable, Sendable {
     let name: String
     let isDirectory: Bool
     let size: Int
 }
 
-struct DirectoryListResult: Codable {
+nonisolated struct DirectoryListResult: Codable, Sendable {
     let path: String
     let items: [DirectoryItem]
     let count: Int
 }
 
-struct DirectoryCreateResult: Codable {
+nonisolated struct DirectoryCreateResult: Codable, Sendable {
     let path: String
     let created: Bool
     let alreadyExists: Bool
 }
 
-struct PathCheckResult: Codable {
+nonisolated struct PathCheckResult: Codable, Sendable {
     let path: String
     let exists: Bool
     let isDirectory: Bool
@@ -451,7 +451,7 @@ struct PathCheckResult: Codable {
 
 #if canImport(FoundationModels)
 @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
-struct ReadFileTool: Tool {
+nonisolated struct ReadFileTool: Tool {
     let name = "read_file"
     let description = "Read the contents of a file. Use ~/Documents/file.txt, ~/Desktop/file.txt, or just filename.txt"
     
@@ -477,7 +477,7 @@ struct ReadFileTool: Tool {
 }
 
 @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
-struct WriteFileTool: Tool {
+nonisolated struct WriteFileTool: Tool {
     let name = "write_file"
     let description = "Write content to a file. Use ~/Documents/file.txt, ~/Desktop/file.txt, or just filename.txt (saves to Documents)"
     
@@ -509,7 +509,7 @@ struct WriteFileTool: Tool {
 }
 
 @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
-struct EditFileTool: Tool {
+nonisolated struct EditFileTool: Tool {
     let name = "edit_file"
     let description = "Edit a file by replacing text. Provide oldText to find and replace, or lineNumber to insert at a specific line."
     
@@ -542,7 +542,7 @@ struct EditFileTool: Tool {
 }
 
 @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
-struct DeleteFileTool: Tool {
+nonisolated struct DeleteFileTool: Tool {
     let name = "delete_file"
     let description = "Delete a file or directory"
     
@@ -567,7 +567,7 @@ struct DeleteFileTool: Tool {
 }
 
 @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
-struct MoveFileTool: Tool {
+nonisolated struct MoveFileTool: Tool {
     let name = "move_file"
     let description = "Move or rename a file or directory"
     
@@ -592,7 +592,7 @@ struct MoveFileTool: Tool {
 }
 
 @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
-struct ListDirectoryTool: Tool {
+nonisolated struct ListDirectoryTool: Tool {
     let name = "list_directory"
     let description = "List contents of a directory"
     
@@ -622,7 +622,7 @@ struct ListDirectoryTool: Tool {
 }
 
 @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
-struct CreateDirectoryTool: Tool {
+nonisolated struct CreateDirectoryTool: Tool {
     let name = "create_directory"
     let description = "Create a directory, including parent directories if needed"
     
@@ -641,7 +641,7 @@ struct CreateDirectoryTool: Tool {
 }
 
 @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
-struct CheckPathTool: Tool {
+nonisolated struct CheckPathTool: Tool {
     let name = "check_path"
     let description = "Check if a path exists and whether it's a file or directory"
     
