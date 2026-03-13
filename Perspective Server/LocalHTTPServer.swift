@@ -100,6 +100,8 @@ actor LocalHTTPServer {
         let _ = await self.incrementActiveRequests()
         defer { Task { let _ = await self.decrementActiveRequests() } }
 
+        await ServerMetrics.shared.recordRequest()
+
         // CORS preflight support
         if request.method == "OPTIONS" {
             return .normal(HTTPResponse(status: 204, headers: [
@@ -156,6 +158,7 @@ actor LocalHTTPServer {
             let serverPort = await self.port
             let activeReqs = await self.getActiveRequestCount()
             let inferenceStats = await FoundationModelsService.shared.inferenceSemaphore.stats
+            let metricsSnap = await ServerMetrics.shared.snapshot
             let obj: [String: Any] = [
                 "status": "ok",
                 "running": serverIsRunning,
@@ -167,7 +170,15 @@ actor LocalHTTPServer {
                     "max_concurrent": inferenceStats.maxConcurrent,
                     "total_completed": inferenceStats.totalCompleted,
                     "total_queued": inferenceStats.totalQueued,
-                ]
+                ],
+                "metrics": [
+                    "total_requests": metricsSnap.totalRequests,
+                    "total_inference_requests": metricsSnap.totalInferenceRequests,
+                    "total_tokens": metricsSnap.totalTokens,
+                    "requests_last_5min": metricsSnap.requestsLast5Min,
+                    "avg_ttft_seconds": metricsSnap.averageTTFT ?? -1,
+                    "last_ttft_seconds": metricsSnap.lastTTFT ?? -1,
+                ] as [String: Any]
             ]
             let data = (try? JSONSerialization.data(withJSONObject: obj, options: [])) ?? Data()
             let resp = HTTPResponse(status: 200, headers: [

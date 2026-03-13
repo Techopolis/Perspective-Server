@@ -18,6 +18,12 @@ struct ServerDashboardView: View {
     @State private var isTesting: Bool = false
     @State private var logMessages: [LogMessage] = []
     @State private var autoStart: Bool = true
+    @State private var metrics: MetricsSnapshot = MetricsSnapshot(
+        totalRequests: 0, totalInferenceRequests: 0,
+        totalTokens: 0, requestsLast5Min: 0,
+        averageTTFT: nil, lastTTFT: nil
+    )
+    @State private var metricsTimer: Timer? = nil
     
     // Native system colors
     private let successColor = Color.green
@@ -32,7 +38,12 @@ struct ServerDashboardView: View {
                     
                     // Main Status Card
                     mainStatusCard
-                    
+
+                    // Server Stats Card
+                    if serverController.isRunning {
+                        serverStatsCard
+                    }
+
                     // Server Controls Card
                     serverControlsCard
                     
@@ -67,6 +78,16 @@ struct ServerDashboardView: View {
         .frame(minWidth: 550, minHeight: 700)
         .onAppear {
             syncServerState()
+            refreshMetrics()
+            metricsTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+                Task { @MainActor in
+                    await refreshMetrics()
+                }
+            }
+        }
+        .onDisappear {
+            metricsTimer?.invalidate()
+            metricsTimer = nil
         }
         .animation(.easeInOut(duration: 0.25), value: showCopiedToast)
     }
@@ -747,8 +768,120 @@ struct ServerDashboardView: View {
         )
     }
     
+    // MARK: - Server Stats Card
+
+    private var serverStatsCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Label("Server Stats", systemImage: "chart.bar.fill")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Spacer()
+
+                Text("Updates every 2s")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+
+            Divider()
+
+            HStack(spacing: 12) {
+                statBox(
+                    title: "Requests",
+                    value: "\(metrics.totalRequests)",
+                    subtitle: "\(metrics.requestsLast5Min) in last 5 min",
+                    icon: "arrow.up.arrow.down"
+                )
+
+                statBox(
+                    title: "Tokens",
+                    value: formatNumber(metrics.totalTokens),
+                    subtitle: "generated",
+                    icon: "textformat.abc"
+                )
+
+                statBox(
+                    title: "Avg TTFT",
+                    value: formatTTFT(metrics.averageTTFT),
+                    subtitle: "time to first token",
+                    icon: "clock"
+                )
+
+                statBox(
+                    title: "Last TTFT",
+                    value: formatTTFT(metrics.lastTTFT),
+                    subtitle: "most recent",
+                    icon: "clock.arrow.circlepath"
+                )
+            }
+        }
+        .padding(20)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color(NSColor.separatorColor), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Server statistics")
+    }
+
+    private func statBox(title: String, value: String, subtitle: String, icon: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(.accentColor)
+                .accessibilityHidden(true)
+            Text(value)
+                .font(.system(size: 18, weight: .bold, design: .monospaced))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(title)
+                .font(.caption.weight(.medium))
+                .foregroundColor(.primary)
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(Color(NSColor.textBackgroundColor))
+        .cornerRadius(10)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value), \(subtitle)")
+    }
+
+    private func formatTTFT(_ value: Double?) -> String {
+        guard let v = value, v >= 0 else { return "--" }
+        if v < 1 {
+            return String(format: "%.0fms", v * 1000)
+        } else {
+            return String(format: "%.1fs", v)
+        }
+    }
+
+    private func formatNumber(_ n: Int) -> String {
+        if n >= 1_000_000 {
+            return String(format: "%.1fM", Double(n) / 1_000_000)
+        } else if n >= 1_000 {
+            return String(format: "%.1fK", Double(n) / 1_000)
+        }
+        return "\(n)"
+    }
+
+    @MainActor
+    private func refreshMetrics() {
+        Task {
+            let snap = await ServerMetrics.shared.snapshot
+            metrics = snap
+        }
+    }
+
     // MARK: - Helper Methods
-    
+
     private func syncServerState() {
         Task {
             let running = await LocalHTTPServer.shared.getIsRunning()

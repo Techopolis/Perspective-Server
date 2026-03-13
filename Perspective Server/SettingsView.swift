@@ -12,6 +12,7 @@ struct SettingsView: View {
     @AppStorage("includeSystemPrompt") private var includeSystemPrompt: Bool = false
     @AppStorage("debugLogging") private var debugLogging: Bool = false
     @AppStorage("includeHistory") private var includeHistory: Bool = true
+    @AppStorage("enableBetaUpdates") private var enableBetaUpdates: Bool = false
 
     var body: some View {
         Form {
@@ -24,6 +25,9 @@ struct SettingsView: View {
             Toggle("Include Conversation History", isOn: $includeHistory)
                 .accessibilityLabel("Include conversation history")
                 .accessibilityHint("Turn off to send only the latest user message")
+            Toggle("Receive Beta Updates", isOn: $enableBetaUpdates)
+                .accessibilityLabel("Receive beta updates")
+                .accessibilityHint("Get early access to new features before stable release")
 
             Section(header: Text("System Prompt")) {
                 TextEditor(text: $systemPrompt)

@@ -379,18 +379,30 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
         await inferenceSemaphore.acquire()
         defer { Task { await inferenceSemaphore.release() } }
 
+        let inferenceStart = ContinuousClock.now
+
         // Always use tools for file operations - this enables the model to create/edit files
         // even when the client doesn't explicitly request tool support
         #if canImport(FoundationModels)
         if #available(macOS 26.0, iOS 26.0, visionOS 26.0, *) {
             // Use native Foundation Models with built-in file tools
-            return try await handleChatCompletionWithBuiltInTools(request)
+            let result = try await handleChatCompletionWithBuiltInTools(request)
+            let elapsed = ContinuousClock.now - inferenceStart
+            let ttft = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+            let outputLen = result.choices.first?.message.content.count ?? 0
+            await ServerMetrics.shared.recordInference(tokens: max(1, outputLen / 4), timeToFirstToken: ttft)
+            return result
         }
         #endif
 
         // Fallback for older systems: If tools are provided, run the tool-calling orchestration flow.
         if let tools = request.tools, !tools.isEmpty {
-            return try await handleChatCompletionWithTools(request, tools: tools)
+            let result = try await handleChatCompletionWithTools(request, tools: tools)
+            let elapsed = ContinuousClock.now - inferenceStart
+            let ttft = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+            let outputLen = result.choices.first?.message.content.count ?? 0
+            await ServerMetrics.shared.recordInference(tokens: max(1, outputLen / 4), timeToFirstToken: ttft)
+            return result
         }
 
         // Build a context-aware prompt that fits within the model's context by summarizing older content when needed.
@@ -400,6 +412,10 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
         // Call into Foundation Models.
         let output = try await generateText(model: request.model, prompt: prompt, temperature: request.temperature, maxTokens: request.max_tokens)
         logger.log("[chat] outputLen=\(output.count)")
+
+        let elapsed = ContinuousClock.now - inferenceStart
+        let ttft = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+        await ServerMetrics.shared.recordInference(tokens: max(1, output.count / 4), timeToFirstToken: ttft)
 
         let response = ChatCompletionResponse(
             id: "chatcmpl_" + UUID().uuidString.replacingOccurrences(of: "-", with: ""),
@@ -436,6 +452,14 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
 
         let resolvedID = sessionID ?? UUID().uuidString
 
+        // Metrics: track TTFT and token count via a Sendable tracker
+        let tracker = StreamMetricsTracker()
+
+        let wrappedEmit: @Sendable (String) async -> Void = { delta in
+            tracker.recordDelta(delta)
+            await emit(delta)
+        }
+
         #if canImport(FoundationModels)
         if #available(macOS 26.0, iOS 26.0, visionOS 26.0, *) {
             try await streamWithFoundationModels(
@@ -443,8 +467,9 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
                 model: model,
                 temperature: temperature,
                 sessionID: resolvedID,
-                emit: emit
+                emit: wrappedEmit
             )
+            await ServerMetrics.shared.recordInference(tokens: tracker.tokenCount, timeToFirstToken: tracker.ttft)
             return resolvedID
         }
         #endif
@@ -459,8 +484,9 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
             temperature: temperature, maxTokens: nil
         )
         for chunk in StreamChunker.chunk(text: output, size: 16) {
-            await emit(chunk)
+            await wrappedEmit(chunk)
         }
+        await ServerMetrics.shared.recordInference(tokens: tracker.tokenCount, timeToFirstToken: tracker.ttft)
         return resolvedID
     }
 

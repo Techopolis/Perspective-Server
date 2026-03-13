@@ -12,12 +12,17 @@ import AppKit
 import Sparkle
 
 @MainActor
-class AppDelegate: NSObject, NSApplicationDelegate, SPUStandardUserDriverDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate, SPUStandardUserDriverDelegate {
     private(set) var updaterController: SPUStandardUpdaterController!
 
     override init() {
         super.init()
-        self.updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: self)
+        self.updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: self)
+    }
+
+    nonisolated func allowedChannels(for updater: SPUUpdater) -> Set<String> {
+        let betaEnabled = UserDefaults.standard.bool(forKey: "enableBetaUpdates")
+        return betaEnabled ? ["beta"] : []
     }
 
     var supportsGentleScheduledUpdateReminders: Bool { true }

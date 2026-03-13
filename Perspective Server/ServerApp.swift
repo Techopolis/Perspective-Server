@@ -38,6 +38,7 @@ final class ServerController: ObservableObject {
     func start() {
         errorMessage = nil
         Task {
+            await ServerMetrics.shared.reset()
             await LocalHTTPServer.shared.setPort(port)
             await LocalHTTPServer.shared.start()
             // Wait a moment for the listener to become ready, then sync state

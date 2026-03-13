@@ -4,6 +4,27 @@
         <title>Perspective Server Updates</title>
         <language>en</language>
         <item>
+            <title>Version 1.1.0 Beta 1</title>
+            <pubDate>Thu, 13 Mar 2026 12:00:00 +0000</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.1.0-beta.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:channel>beta</sparkle:channel>
+            <description><![CDATA[
+                <h2>Perspective Server 1.1.0 Beta 1</h2>
+                <ul>
+                    <li>Server metrics dashboard with request counts, token tracking, and time-to-first-token</li>
+                    <li>Opt-in beta update channel in Settings</li>
+                    <li>Swift 6.2 concurrency fixes</li>
+                </ul>
+            ]]></description>
+            <enclosure
+                url="https://github.com/Techopolis/Perspective-Server/releases/download/v1.1.0-beta.1/PerspectiveServer-1.1.0-beta.1.zip"
+                type="application/octet-stream"
+                length="1570645"
+            />
+        </item>
+        <item>
             <title>Version 1.0</title>
             <pubDate>Sat, 01 Mar 2026 21:00:00 +0000</pubDate>
             <sparkle:version>1</sparkle:version>
