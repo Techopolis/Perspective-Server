@@ -44,6 +44,9 @@ struct ServerDashboardView: View {
                         serverStatsCard
                     }
 
+                    // Remote Access Card
+                    remoteAccessCard
+
                     // Server Controls Card
                     serverControlsCard
                     
@@ -238,8 +241,12 @@ struct ServerDashboardView: View {
                         .accessibilityHint("Copies the base URL details to the clipboard")
                     }
 
-                    // Pairing code for Perspective Intelligence Web
+                    // Web pairing details
                     VStack(alignment: .leading, spacing: 4) {
+                        Text("Perspective Intelligence Web")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.primary)
+
                         HStack(spacing: 8) {
                             Label("Pairing Code: \(serverController.pairingCode)", systemImage: "link.badge.plus")
                                 .font(.system(size: 13, design: .monospaced))
@@ -255,9 +262,9 @@ struct ServerDashboardView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel(copiedAccessibilityLabel(defaultLabel: "Copy pairing code", copiedLabel: "Pairing code copied", copiedMessage: "Pairing code copied"))
                             .accessibilityValue(copiedAccessibilityValue(copiedMessage: "Pairing code copied"))
-                            .accessibilityHint("Copies the 6-digit pairing code for connecting Perspective Intelligence Web")
+                            .accessibilityHint("Copies the 6-digit pairing code for connecting from the web app")
                         }
-                        Text("Enter this code in Perspective Intelligence Web to connect your browser directly to this server. Your messages stay private on your Mac.")
+                        Text("Use this code to connect from Perspective Intelligence Web. Go to Settings in the web app, choose Pairing Code, and enter these 6 digits. Your conversations stay on this Mac.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -306,8 +313,106 @@ struct ServerDashboardView: View {
         )
     }
     
+    // MARK: - Remote Access Card
+
+    private var remoteAccessCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Label("Remote Access", systemImage: "network")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+
+            Divider()
+
+            Toggle(isOn: Binding(
+                get: { serverController.relayEnabled },
+                set: { serverController.setRelayEnabled($0) }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Enable remote access")
+                        .font(.subheadline.weight(.medium))
+                    Text("Let Perspective Intelligence Web connect to this server so you can chat from any browser, anywhere. Your Mac does the AI processing.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .disabled(!serverController.isRunning)
+            .accessibilityLabel("Enable remote access")
+            .accessibilityHint(serverController.isRunning
+                ? "Connects this server to Perspective Intelligence Web for remote browser access"
+                : "Start the server first to enable remote access")
+            .accessibilityValue(serverController.relayEnabled ? "Enabled" : "Disabled")
+
+            if serverController.relayEnabled {
+                HStack(spacing: 14) {
+                    Circle()
+                        .fill(relayIndicatorColor)
+                        .frame(width: 12, height: 12)
+                        .shadow(color: relayIndicatorColor.opacity(0.6), radius: 4)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(relayStatusText)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.primary)
+                        Text(relayStatusDetail)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer()
+                }
+                .padding(12)
+                .background(Color(NSColor.textBackgroundColor))
+                .cornerRadius(10)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Relay status: \(relayStatusText). \(relayStatusDetail)")
+            }
+        }
+        .padding(20)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color(NSColor.separatorColor), lineWidth: 1)
+        )
+    }
+
+    private var relayIndicatorColor: Color {
+        switch serverController.relayStatus {
+        case .paired: return successColor
+        case .waitingForPairing: return .orange
+        case .connecting, .waitingForAuth: return .yellow
+        case .error: return errorColor
+        case .disconnected: return .gray
+        }
+    }
+
+    private var relayStatusText: String {
+        serverController.relayStatus.displayText
+    }
+
+    private var relayStatusDetail: String {
+        switch serverController.relayStatus {
+        case .disconnected:
+            return "Not connected to the cloud relay."
+        case .connecting, .waitingForAuth:
+            return "Connecting to Perspective Intelligence Web..."
+        case .waitingForPairing:
+            return "Ready. Go to Perspective Intelligence Web, open Settings, choose Pairing Code, and enter: \(serverController.pairingCode)"
+        case .paired:
+            return "A browser is connected and chatting through this Mac. Everything's running locally."
+        case .error(let msg):
+            return msg
+        }
+    }
+
     // MARK: - Server Controls Card
-    
+
     private var serverControlsCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {

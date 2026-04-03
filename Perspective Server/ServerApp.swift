@@ -7,16 +7,43 @@ struct ServerApp: App {
 
     var body: some Scene {
         MenuBarExtra("PI Server", systemImage: "bolt.horizontal.circle") {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Perspective Server")
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Perspective Intelligence Server")
                     .font(.headline)
+
+                Text("Runs AI models on your Mac so you can chat privately from any browser. No cloud required.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Divider()
+
+                // Pairing code — always visible
+                if serverController.isRunning && !serverController.pairingCode.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Web Pairing Code")
+                            .font(.subheadline.weight(.medium))
+                        Text(serverController.pairingCode)
+                            .font(.system(.largeTitle, design: .monospaced).bold())
+                            .foregroundStyle(.orange)
+                            .textSelection(.enabled)
+                        Text("Enter this in Perspective Intelligence Web to connect your browser to this Mac.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Web pairing code: \(serverController.pairingCode.map(String.init).joined(separator: " ")). Enter this in Perspective Intelligence Web to connect.")
+
+                    Divider()
+                }
+
                 ServerStatusView()
                     .environmentObject(serverController)
                 Divider()
-                // Standard macOS apps already have a Quit menu command; omit explicit Quit button to avoid AppKit.
             }
             .padding(12)
-            .frame(width: 300)
+            .frame(width: 320)
         }
         .commands { // Ensure standard app commands (including Quit) are available
             CommandGroup(replacing: .appInfo) { }
@@ -31,9 +58,18 @@ final class ServerController: ObservableObject {
     @Published var port: UInt16 = 11434
     @Published var pairingCode: String = ""
     @Published var errorMessage: String? = nil
+    @Published var relayEnabled: Bool = UserDefaults.standard.bool(forKey: "relayEnabled")
+    @Published var relayStatus: RelayStatus = .disconnected
 
     init() {
         start()
+        Task {
+            await RelayClient.shared.setStatusCallback { [weak self] status in
+                Task { @MainActor [weak self] in
+                    self?.relayStatus = status
+                }
+            }
+        }
     }
 
     func start() {
@@ -42,19 +78,22 @@ final class ServerController: ObservableObject {
             await ServerMetrics.shared.reset()
             await LocalHTTPServer.shared.setPort(port)
             await LocalHTTPServer.shared.start()
-            // Wait a moment for the listener to become ready, then sync state
-            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+            try? await Task.sleep(nanoseconds: 300_000_000)
             let running = await LocalHTTPServer.shared.getIsRunning()
             let error = await LocalHTTPServer.shared.getLastError()
             let code = await LocalHTTPServer.shared.pairingCode
             self.isRunning = running
             self.errorMessage = error
             self.pairingCode = code
+            if running && self.relayEnabled {
+                await RelayClient.shared.connect()
+            }
         }
     }
 
     func stop() {
         Task {
+            await RelayClient.shared.disconnect()
             await LocalHTTPServer.shared.stop()
             let running = await LocalHTTPServer.shared.getIsRunning()
             self.isRunning = running
@@ -65,17 +104,20 @@ final class ServerController: ObservableObject {
     func restart() {
         errorMessage = nil
         Task {
+            await RelayClient.shared.disconnect()
             await LocalHTTPServer.shared.stop()
             await LocalHTTPServer.shared.setPort(port)
             await LocalHTTPServer.shared.start()
-            // Wait a moment for the listener to become ready, then sync state
-            try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+            try? await Task.sleep(nanoseconds: 300_000_000)
             let running = await LocalHTTPServer.shared.getIsRunning()
             let error = await LocalHTTPServer.shared.getLastError()
             let code = await LocalHTTPServer.shared.pairingCode
             self.isRunning = running
             self.errorMessage = error
             self.pairingCode = code
+            if running && relayEnabled {
+                await RelayClient.shared.connect()
+            }
         }
     }
 
@@ -85,10 +127,24 @@ final class ServerController: ObservableObject {
             let serverPort = await LocalHTTPServer.shared.getPort()
             let error = await LocalHTTPServer.shared.getLastError()
             let code = await LocalHTTPServer.shared.pairingCode
+            let currentRelayStatus = await RelayClient.shared.status
             self.isRunning = running
             self.port = serverPort
             self.errorMessage = error
             self.pairingCode = code
+            self.relayStatus = currentRelayStatus
+        }
+    }
+
+    func setRelayEnabled(_ enabled: Bool) {
+        relayEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: "relayEnabled")
+        Task {
+            if enabled && isRunning {
+                await RelayClient.shared.connect()
+            } else if !enabled {
+                await RelayClient.shared.disconnect()
+            }
         }
     }
 }
