@@ -203,7 +203,7 @@ struct ServerDashboardView: View {
                             .foregroundColor(.primary)
                         
                         if serverController.isRunning {
-                            Text("Listening on port \(String(serverController.port))")
+                            Text(verbatim: "Listening on port \(serverController.port)")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         } else if let error = serverController.errorMessage {
@@ -221,9 +221,13 @@ struct ServerDashboardView: View {
                 
                 if serverController.isRunning {
                     HStack(spacing: 8) {
-                        Label("http://127.0.0.1:\(String(serverController.port))", systemImage: "link")
-                            .font(.system(size: 13, design: .monospaced))
-                            .foregroundColor(.accentColor)
+                        Label {
+                            Text(verbatim: "http://127.0.0.1:\(serverController.port)")
+                        } icon: {
+                            Image(systemName: "link")
+                        }
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(.accentColor)
                         
                         Button(action: {
                             copyToClipboard(
