@@ -11,12 +11,13 @@ struct ServerDashboardView: View {
     @EnvironmentObject private var serverController: ServerController
     @Environment(\.openWindow) private var openWindow
     @Environment(\.colorScheme) private var colorScheme
+    @ObservedObject private var appLogStore = AppLogStore.shared
     @State private var localPort: String = "11434"
     @State private var showCopiedToast: Bool = false
     @State private var copiedText: String = ""
     @State private var testResult: String = ""
     @State private var isTesting: Bool = false
-    @State private var logMessages: [LogMessage] = []
+    @State private var autoScrollLogs: Bool = true
     @State private var autoStart: Bool = true
     @State private var metrics: MetricsSnapshot = MetricsSnapshot(
         totalRequests: 0, totalInferenceRequests: 0,
@@ -28,6 +29,11 @@ struct ServerDashboardView: View {
     // Native system colors
     private let successColor = Color.green
     private let errorColor = Color.red
+    private static let logTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }()
     
     var body: some View {
         ZStack {
@@ -61,6 +67,9 @@ struct ServerDashboardView: View {
                     
                     // Connection Test Card
                     testConnectionCard
+
+                    // Logs Card
+                    logsCard
                     
                     Spacer(minLength: 20)
                 }
@@ -84,7 +93,7 @@ struct ServerDashboardView: View {
             refreshMetrics()
             metricsTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
                 Task { @MainActor in
-                    await refreshMetrics()
+                    refreshMetrics()
                 }
             }
         }
@@ -278,13 +287,13 @@ struct ServerDashboardView: View {
             Button(action: {
                 if serverController.isRunning {
                     serverController.stop()
-                    addLog("Server stopped", type: .info)
+                    AppLog.info("Server stop requested from dashboard", source: "dashboard")
                 } else {
                     if let portNum = UInt16(localPort) {
                         serverController.port = portNum
                     }
                     serverController.start()
-                    addLog("Server started on port \(serverController.port)", type: .success)
+                    AppLog.info("Server start requested from dashboard (port \(serverController.port))", source: "dashboard")
                 }
             }) {
                 VStack(spacing: 8) {
@@ -507,10 +516,10 @@ struct ServerDashboardView: View {
                                 serverController.port = portNum
                                 if serverController.isRunning {
                                     serverController.restart()
-                                    addLog("Server restarted on port \(portNum)", type: .info)
+                                    AppLog.info("Server restart requested from dashboard (port \(portNum))", source: "dashboard")
                                 } else {
                                     serverController.start()
-                                    addLog("Server started on port \(portNum)", type: .success)
+                                    AppLog.info("Server start requested from dashboard (port \(portNum))", source: "dashboard")
                                 }
                             }
                         }) {
@@ -1027,6 +1036,114 @@ struct ServerDashboardView: View {
         return "\(n)"
     }
 
+    // MARK: - Logs Card
+
+    private var logsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Label("Logs", systemImage: "text.alignleft")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Spacer()
+                Toggle("Auto-scroll", isOn: $autoScrollLogs)
+                    .toggleStyle(.switch)
+                    .font(.caption)
+                    .labelsHidden()
+                    .help("Automatically scroll to newest log entries")
+                Button("Copy") {
+                    copyToClipboard(appLogStore.exportText(), message: "Logs copied")
+                }
+                .buttonStyle(.bordered)
+                .disabled(appLogStore.entries.isEmpty)
+                Button("Clear") {
+                    appLogStore.clear()
+                    AppLog.info("Logs cleared from dashboard", source: "dashboard")
+                }
+                .buttonStyle(.bordered)
+                .disabled(appLogStore.entries.isEmpty)
+            }
+
+            Divider()
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    if appLogStore.entries.isEmpty {
+                        Text("No log entries yet.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
+                    } else {
+                        LazyVStack(alignment: .leading, spacing: 6) {
+                            ForEach(appLogStore.entries) { entry in
+                                logRow(entry)
+                                    .id(entry.id)
+                            }
+                        }
+                        .textSelection(.enabled)
+                        .padding(.vertical, 2)
+                    }
+                }
+                .frame(minHeight: 150, maxHeight: 220)
+                .padding(10)
+                .background(Color(NSColor.textBackgroundColor))
+                .cornerRadius(10)
+                .onAppear {
+                    scrollLogsToBottom(proxy)
+                }
+                .onChange(of: appLogStore.entries.count) { _, _ in
+                    scrollLogsToBottom(proxy)
+                }
+            }
+        }
+        .padding(20)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color(NSColor.separatorColor), lineWidth: 1)
+        )
+    }
+
+    private func logRow(_ entry: AppLogEntry) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(Self.logTimeFormatter.string(from: entry.timestamp))
+                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                .foregroundColor(.secondary)
+                .frame(width: 58, alignment: .leading)
+
+            Text(entry.severity.label)
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .foregroundColor(severityColor(entry.severity))
+                .frame(width: 52, alignment: .leading)
+
+            Text("[\(entry.source)] \(entry.message)")
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 1)
+    }
+
+    private func severityColor(_ severity: AppLogSeverity) -> Color {
+        switch severity {
+        case .debug:
+            return .secondary
+        case .info:
+            return .blue
+        case .warning:
+            return .orange
+        case .error:
+            return errorColor
+        }
+    }
+
+    private func scrollLogsToBottom(_ proxy: ScrollViewProxy) {
+        guard autoScrollLogs, let lastID = appLogStore.entries.last?.id else { return }
+        withAnimation(.easeOut(duration: 0.2)) {
+            proxy.scrollTo(lastID, anchor: .bottom)
+        }
+    }
+
     @MainActor
     private func refreshMetrics() {
         Task {
@@ -1082,7 +1199,7 @@ struct ServerDashboardView: View {
                                     testResult = "Success! Models found:\n• " + modelNames.joined(separator: "\n• ")
                                 }
                                 isTesting = false
-                                addLog("Connection test passed", type: .success)
+                                AppLog.info("Connection test passed", source: "dashboard")
                             }
                         } else {
                             await MainActor.run {
@@ -1094,7 +1211,7 @@ struct ServerDashboardView: View {
                         await MainActor.run {
                             testResult = "Server returned status \(httpResponse.statusCode)"
                             isTesting = false
-                            addLog("Connection test failed: status \(httpResponse.statusCode)", type: .error)
+                            AppLog.error("Connection test failed: status \(httpResponse.statusCode)", source: "dashboard")
                         }
                     }
                 }
@@ -1102,7 +1219,7 @@ struct ServerDashboardView: View {
                 await MainActor.run {
                     testResult = "Connection failed:\n\(error.localizedDescription)"
                     isTesting = false
-                    addLog("Connection test failed: \(error.localizedDescription)", type: .error)
+                    AppLog.error("Connection test failed: \(error.localizedDescription)", source: "dashboard")
                 }
             }
         }
@@ -1134,26 +1251,6 @@ struct ServerDashboardView: View {
         return lines.joined(separator: "\n")
     }
     
-    private func addLog(_ message: String, type: LogType) {
-        let log = LogMessage(message: message, type: type, timestamp: Date())
-        logMessages.insert(log, at: 0)
-        if logMessages.count > 50 {
-            logMessages.removeLast()
-        }
-    }
-}
-
-// MARK: - Supporting Types
-
-struct LogMessage: Identifiable {
-    let id = UUID()
-    let message: String
-    let type: LogType
-    let timestamp: Date
-}
-
-enum LogType {
-    case info, success, error
 }
 
 #Preview {

@@ -68,6 +68,7 @@ actor RelayClient {
     func connect() async {
         guard !isEnabled else {
             logger.log("RelayClient.connect() skipped — already enabled")
+            AppLog.debug("Connect skipped because relay is already enabled", source: "relay")
             return
         }
         isEnabled = true
@@ -114,6 +115,7 @@ actor RelayClient {
         let delay = reconnectDelay
         reconnectDelay = min(reconnectDelay * 2, maxReconnectDelay)
         logger.log("Scheduling reconnect in \(delay, privacy: .public)s")
+        AppLog.warning("Relay reconnect scheduled in \(Int(delay))s", source: "relay")
         updateStatus(.disconnected)
 
         reconnectTask = Task { [weak self] in
@@ -207,10 +209,12 @@ actor RelayClient {
         case "error":
             let msg = json["message"] as? String ?? "Unknown relay error"
             logger.error("Relay error: \(msg, privacy: .public)")
+            AppLog.error("Relay error: \(msg)", source: "relay")
             // If the relay token was rejected, clear it so next reconnect uses pairing code
             if msg.contains("relay token") {
                 UserDefaults.standard.removeObject(forKey: relayTokenKey)
                 logger.log("Cleared invalid relay token")
+                AppLog.warning("Cleared invalid relay token after auth failure", source: "relay")
             }
             updateStatus(.error(msg))
 
@@ -234,6 +238,7 @@ actor RelayClient {
         let code = await LocalHTTPServer.shared.pairingCode
         guard !code.isEmpty else {
             logger.error("No pairing code available, cannot authenticate")
+            AppLog.error("Relay auth failed: no pairing code available", source: "relay")
             updateStatus(.error("No pairing code"))
             return
         }

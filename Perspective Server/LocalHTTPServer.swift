@@ -50,6 +50,7 @@ actor LocalHTTPServer {
     private func generatePairingCode() {
         pairingCode = String(format: "%06d", Int.random(in: 0...999999))
         logger.log("Pairing code generated: \(self.pairingCode, privacy: .public)")
+        AppLog.info("Generated new pairing code", source: "server")
     }
 
     private init() {}
@@ -108,6 +109,7 @@ actor LocalHTTPServer {
     func start() async {
         guard !isRunning else {
             logger.log("Server already running, ignoring start request")
+            AppLog.warning("Start requested while already running", source: "server")
             return
         }
         lastError = nil
@@ -143,9 +145,11 @@ actor LocalHTTPServer {
             }
             listener?.start(queue: DispatchQueue.global())
             logger.log("Server starting on port \(targetPort)...")
+            AppLog.info("Attempting to bind localhost:\(targetPort)", source: "server")
         } catch {
             lastError = "Failed to create listener on port \(targetPort): \(error.localizedDescription)"
             logger.error("Failed to start listener: \(String(describing: error))")
+            AppLog.error("Failed to create listener on port \(targetPort): \(error.localizedDescription)", source: "server")
             // Try next port
             currentPortIndex += 1
             await tryStartOnNextPort()
@@ -153,6 +157,7 @@ actor LocalHTTPServer {
     }
 
     func stop() async {
+        AppLog.info("Shutting down listener and active connections", source: "server")
         listener?.cancel()
         listener = nil
         connections.forEach { $0.cancel() }
@@ -181,6 +186,7 @@ actor LocalHTTPServer {
         let validatedCorsOrigin = Self.isAllowedOrigin(origin) ? (origin ?? "") : ""
         if !Self.isAllowedHost(host, serverPort: serverPort) {
             logger.warning("[req:\(rid, privacy: .public)] Blocked: invalid Host header '\(host ?? "nil", privacy: .public)'")
+            AppLog.warning("Blocked request with invalid Host header (\(host ?? "nil"))", source: "auth")
             let msg = ["error": ["message": "Forbidden: invalid Host header"]]
             let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
             return .normal(HTTPResponse(status: 403, headers: Self.jsonHeaders(corsOrigin: validatedCorsOrigin), body: data))
@@ -189,6 +195,7 @@ actor LocalHTTPServer {
         // 2. Validate Origin header (cross-origin protection)
         if !Self.isAllowedOrigin(origin) {
             logger.warning("[req:\(rid, privacy: .public)] Blocked: disallowed Origin '\(origin ?? "nil", privacy: .public)'")
+            AppLog.warning("Blocked request with disallowed Origin (\(origin ?? "nil"))", source: "auth")
             let msg = ["error": ["message": "Forbidden: origin not allowed"]]
             let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
             return .normal(HTTPResponse(status: 403, headers: Self.jsonHeaders(), body: data))
@@ -242,6 +249,7 @@ actor LocalHTTPServer {
                 let data = (try? JSONSerialization.data(withJSONObject: obj, options: [])) ?? Data()
                 return .normal(HTTPResponse(status: 200, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
             } else {
+                AppLog.warning("Pairing verification failed: invalid code", source: "auth")
                 let msg = ["error": ["message": "Invalid pairing code"]]
                 let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
                 return .normal(HTTPResponse(status: 403, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
@@ -259,9 +267,10 @@ actor LocalHTTPServer {
         }()
 
         // Basic request logging for troubleshooting
-    let contentType = request.headers["content-type"] ?? request.headers["Content-Type"] ?? ""
-    let contentLength = request.headers["content-length"] ?? request.headers["Content-Length"] ?? ""
+        let contentType = request.headers["content-type"] ?? request.headers["Content-Type"] ?? ""
+        let contentLength = request.headers["content-length"] ?? request.headers["Content-Length"] ?? ""
         logger.log("[req:\(rid, privacy: .public)] HTTP \(request.method, privacy: .public) \(path, privacy: .public) ct=\(contentType, privacy: .public) cl=\(contentLength, privacy: .public)")
+        AppLog.debug("HTTP \(request.method) \(path)", source: "request")
         if request.method == "POST" {
             logger.log("[req:\(rid, privacy: .public)] body: \(Self.truncateBodyForLog(request.bodyData), privacy: .public)")
         }
@@ -757,6 +766,7 @@ actor LocalHTTPServer {
                 }
             } catch {
                 logger.error("[req:\(rid, privacy: .public)] /v1/chat/completions error: \(String(describing: error), privacy: .public) body=\(Self.truncateBodyForLog(request.bodyData), privacy: .public)")
+                AppLog.error("Inference request failed at /v1/chat/completions: \(error.localizedDescription)", source: "inference")
                 let msg = ["error": ["message": error.localizedDescription]]
                 let data = try? JSONSerialization.data(withJSONObject: msg, options: [])
                 return .normal(HTTPResponse(status: 400, headers: [
@@ -767,6 +777,7 @@ actor LocalHTTPServer {
         }
         // Not Found
         logger.error("[req:\(rid, privacy: .public)] 404 Not Found \(path, privacy: .public)")
+        AppLog.warning("Request returned 404 for path \(path)", source: "request")
         let body = Data("Not Found".utf8)
         return .normal(HTTPResponse(status: 404, headers: [
             "Content-Type": "text/plain",
@@ -780,6 +791,7 @@ actor LocalHTTPServer {
         switch state {
         case .ready:
             logger.log("HTTP server listening on localhost:\(currentPort) (loopback only)")
+            AppLog.info("Server listening on localhost:\(currentPort)", source: "server")
             isRunning = true
             lastError = nil
         case .failed(let error):
@@ -793,6 +805,7 @@ actor LocalHTTPServer {
             }
             
             logger.error("Listener failed on port \(currentPort): \(String(describing: error))")
+            AppLog.error("Listener failed on port \(currentPort): \(error.localizedDescription)", source: "server")
             listener?.cancel()
             listener = nil
             isRunning = false
@@ -802,16 +815,20 @@ actor LocalHTTPServer {
                 currentPortIndex += 1
                 if currentPortIndex < fallbackPorts.count {
                     logger.log("Port \(currentPort) in use, trying next port...")
+                    AppLog.warning("Port \(currentPort) already in use, trying fallback", source: "server")
                     await tryStartOnNextPort()
                 } else {
                     lastError = "All ports in use. Tried: \(fallbackPorts.map(String.init).joined(separator: ", "))"
                     logger.error("\(self.lastError ?? "")")
+                    AppLog.error(lastError ?? "All ports in use", source: "server")
                 }
             } else {
                 lastError = "Server failed: \(error.localizedDescription)"
+                AppLog.error(lastError ?? "Server failed", source: "server")
             }
         case .cancelled:
             logger.log("Listener cancelled")
+            AppLog.info("Server listener cancelled", source: "server")
             isRunning = false
         default:
             break

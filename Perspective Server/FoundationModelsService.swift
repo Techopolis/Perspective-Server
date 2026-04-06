@@ -408,10 +408,12 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
         // Build a context-aware prompt that fits within the model's context by summarizing older content when needed.
         let prompt = await prepareChatPrompt(messages: request.messages, model: request.model, temperature: request.temperature, maxTokens: request.max_tokens)
         logger.log("[chat] model=\(request.model, privacy: .public) messages=\(request.messages.count) promptLen=\(prompt.count)")
+        AppLog.info("Inference started for model \(request.model)", source: "inference")
 
         // Call into Foundation Models.
         let output = try await generateText(model: request.model, prompt: prompt, temperature: request.temperature, maxTokens: request.max_tokens)
         logger.log("[chat] outputLen=\(output.count)")
+        AppLog.info("Inference completed (\(output.count) chars)", source: "inference")
 
         let elapsed = ContinuousClock.now - inferenceStart
         let ttft = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
@@ -509,6 +511,7 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
             break
         case .unavailable(let reason):
             logger.error("[fm-stream] Model unavailable: \(String(describing: reason))")
+            AppLog.error("Streaming unavailable: \(String(describing: reason))", source: "inference")
             throw NSError(
                 domain: "FoundationModelsService", code: 1,
                 userInfo: [NSLocalizedDescriptionKey: "Model unavailable: \(String(describing: reason))"]
@@ -547,6 +550,7 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
         let prompt = userMessage
 
         logger.log("[fm-stream] starting stream, prompt len=\(prompt.count), cached=\(isExistingSession)")
+        AppLog.info("Streaming inference started (cached session: \(isExistingSession))", source: "inference")
 
         do {
             let stream = session.streamResponse(to: prompt)
@@ -580,6 +584,7 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
             if isSoftRefusal {
                 // Evict the poisoned session so the next message gets a fresh one
                 logger.warning("[fm-stream] Soft refusal detected for session \(sessionID, privacy: .public) — evicting to prevent refusal spiral")
+                AppLog.warning("Soft refusal detected; session reset", source: "guardrail")
                 await sessionManager.store(sessionID, session: LanguageModelSession(instructions: instructions))
             } else {
                 // Cache the healthy session for reuse
@@ -588,6 +593,7 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
 
             let cachedCount = await sessionManager.count
             logger.log("[fm-stream] stream complete, total len=\(lastContent.count), refusal=\(isSoftRefusal), session=\(sessionID, privacy: .public), cached sessions=\(cachedCount)")
+            AppLog.info("Streaming inference complete (\(lastContent.count) chars)", source: "inference")
         } catch {
             // Handle ALL errors gracefully to prevent the "Unable to stream" fallback.
             // Always evict the session on error — a poisoned transcript causes refusal spirals.
@@ -596,8 +602,10 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
 
             if isGuardrail {
                 logger.warning("[fm-stream] Guardrail/refusal for session \(sessionID, privacy: .public) — evicting session: \(errorDesc.prefix(120), privacy: .public)")
+                AppLog.warning("Guardrail/refusal triggered during streaming; returned friendly fallback", source: "guardrail")
             } else {
                 logger.error("[fm-stream] Stream error for session \(sessionID, privacy: .public) — evicting session: \(errorDesc.prefix(200), privacy: .public)")
+                AppLog.error("Streaming inference error: \(String(errorDesc.prefix(160)))", source: "inference")
             }
 
             // Always evict — any error during streaming may have corrupted the session transcript
@@ -1122,6 +1130,7 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
     private func generateText(model: String, prompt: String, temperature: Double?, maxTokens: Int?) async throws -> String {
         // Prefer Apple Intelligence on supported platforms; otherwise return a graceful fallback
         logger.log("Generating text (FoundationModels if available, else fallback)")
+        AppLog.debug("Generating text request received for model \(model)", source: "inference")
 
         #if canImport(FoundationModels)
         logger.log("[fm] FoundationModels framework is available at compile time")
@@ -1131,13 +1140,16 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
                 return try await generateWithFoundationModels(model: model, prompt: prompt, temperature: temperature)
             } catch {
                 logger.error("FoundationModels failed: \(String(describing: error))")
+                AppLog.error("FoundationModels failed, using fallback response: \(error.localizedDescription)", source: "fallback")
                 // Fall through to fallback message below without truncating the prompt
             }
         } else {
             logger.warning("[fm] Runtime availability check FAILED - macOS 26.0+ required. Current OS version does not meet requirements.")
+            AppLog.warning("FoundationModels runtime unavailable; using fallback response", source: "fallback")
         }
         #else
         logger.warning("[fm] FoundationModels framework NOT available at compile time")
+        AppLog.warning("FoundationModels not compiled in; using fallback response", source: "fallback")
         #endif
 
         // Fallback path when FoundationModels is not available on this platform/SDK.
@@ -1177,11 +1189,13 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
         do {
             let response = try await session.respond(to: prompt)
             logger.log("[fm] got response len=\(response.content.count)")
+            AppLog.info("Non-stream inference completed (\(response.content.count) chars)", source: "inference")
             return response.content
         } catch {
             let errorDesc = String(reflecting: error).lowercased()
             if errorDesc.contains("guardrailviolation") || errorDesc.contains("refusal") {
                 logger.warning("[fm] Guardrail/refusal hit — returning friendly message")
+                AppLog.warning("Guardrail/refusal triggered; returned friendly fallback", source: "guardrail")
                 return "I'm not able to help with that particular request. Could you try rephrasing or asking something different?"
             }
             throw error
@@ -1535,4 +1549,3 @@ nonisolated private final class ToolsRegistry: @unchecked Sendable {
         return nil
     }
 }
-
