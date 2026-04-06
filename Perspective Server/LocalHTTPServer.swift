@@ -30,14 +30,11 @@ actor LocalHTTPServer {
     // already running on the user's machine with full filesystem access.
     // This matches how Ollama and similar local AI servers handle security.
 
-    /// Origins allowed to make cross-origin requests from a browser.
-    /// Localhost covers local dev and browser extensions.
-    /// The Perspective Intelligence web app is allowed so Basic tier users
-    /// can stream directly from the browser to their Mac.
+    /// Origins allowed to make requests from a browser context.
+    /// Keep this loopback-only to prevent arbitrary public websites from
+    /// driving the local model via cross-site browser requests.
     private static let allowedOriginHosts: Set<String> = [
         "localhost", "127.0.0.1", "[::1]", "::1",
-        "perspectiveintelligence.app",
-        "www.perspectiveintelligence.app",
     ]
 
     // MARK: - Pairing
@@ -92,6 +89,15 @@ actor LocalHTTPServer {
         guard let origin = origin else { return true } // No Origin = not a browser cross-origin request
         guard let url = URL(string: origin), let host = url.host else { return false }
         return allowedOriginHosts.contains(host.lowercased())
+    }
+
+    /// Browser requests that omit Origin can still be cross-site (e.g. some no-cors subresource loads).
+    /// If Fetch Metadata headers are present, treat this as browser traffic and require Origin.
+    nonisolated private static func isBrowserRequestMissingOrigin(headers: [String: String], origin: String?) -> Bool {
+        guard origin == nil else { return false }
+        let hasSecFetchSite = headers["sec-fetch-site"] != nil
+        let hasSecFetchMode = headers["sec-fetch-mode"] != nil
+        return hasSecFetchSite || hasSecFetchMode
     }
 
     nonisolated private static func jsonHeaders(corsOrigin: String? = nil) -> [String: String] {
@@ -178,6 +184,15 @@ actor LocalHTTPServer {
         let serverPort = await self.port
         let host = request.headers["host"]
         let origin = request.headers["origin"]
+
+        // 1a. Require Origin for browser-context requests to close no-origin CSRF paths.
+        if Self.isBrowserRequestMissingOrigin(headers: request.headers, origin: origin) {
+            logger.warning("[req:\(rid, privacy: .public)] Blocked: browser request missing Origin header")
+            let msg = ["error": ["message": "Forbidden: browser requests must include Origin"]]
+            let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
+            return .normal(HTTPResponse(status: 403, headers: Self.jsonHeaders(), body: data))
+        }
+
         let validatedCorsOrigin = Self.isAllowedOrigin(origin) ? (origin ?? "") : ""
         if !Self.isAllowedHost(host, serverPort: serverPort) {
             logger.warning("[req:\(rid, privacy: .public)] Blocked: invalid Host header '\(host ?? "nil", privacy: .public)'")
