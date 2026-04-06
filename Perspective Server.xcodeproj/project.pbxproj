@@ -113,13 +113,13 @@
 			);
 			mainGroup = 9DF1C07B2E774697000D654F;
 			minimizedProjectReferenceProxies = 1;
-			packageReferences = (
-				F1A2B3C40000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
-			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9DF1C0852E774697000D654F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				F1A2B3C40000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			targets = (
 				9DF1C0832E774697000D654F /* Perspective Server */,
 			);
@@ -271,7 +271,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Perspective Server/Perspective_Server.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = A6V5248GGT;
+				DEVELOPMENT_TEAM = M9SNPTXA44;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -295,7 +295,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = "1.1.0-beta.2";
+				MARKETING_VERSION = 1.1.0-beta.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "online.techopolis.Perspective-Server";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -319,7 +319,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Perspective Server/Perspective_Server.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = A6V5248GGT;
+				DEVELOPMENT_TEAM = M9SNPTXA44;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -343,7 +343,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = "1.1.0-beta.2";
+				MARKETING_VERSION = 1.1.0-beta.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "online.techopolis.Perspective-Server";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
