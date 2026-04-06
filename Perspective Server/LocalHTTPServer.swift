@@ -32,9 +32,12 @@ actor LocalHTTPServer {
 
     /// Origins allowed to make requests from a browser context.
     /// Keep this loopback-only to prevent arbitrary public websites from
-    /// driving the local model via cross-site browser requests.
+    /// driving the local model via cross-site browser requests, while still
+    /// allowing the official Perspective Intelligence web app integration.
     private static let allowedOriginHosts: Set<String> = [
         "localhost", "127.0.0.1", "[::1]", "::1",
+        "perspectiveintelligence.app",
+        "www.perspectiveintelligence.app",
     ]
 
     // MARK: - Pairing
