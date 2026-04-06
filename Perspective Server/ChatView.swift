@@ -90,6 +90,9 @@ final class ChatViewModel: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = await AccessControlManager.shared.tokenForLocalApp() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         request.httpBody = try JSONEncoder().encode(reqBody)
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -154,7 +157,7 @@ struct ChatView: View {
                 .fill(serverStatusColor)
                 .frame(width: 10, height: 10)
                 .accessibilityHidden(true)
-            Text(serverReady ? "Local API: 127.0.0.1:\(vm.port)" : "Server offline")
+            Text(verbatim: serverReady ? "Local API: 127.0.0.1:\(vm.port)" : "Server offline")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .accessibilityLabel(serverReady ? "Local API on port \(vm.port)" : "Server offline")

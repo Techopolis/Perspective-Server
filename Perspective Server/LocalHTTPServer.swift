@@ -14,8 +14,10 @@ actor LocalHTTPServer {
     private(set) var lastError: String? = nil
     private var activeRequestCount: Int = 0
 
-    /// Ports to try in order if the primary port is unavailable
-    private let fallbackPorts: [UInt16] = [11434, 11435, 11436, 11437, 8080]
+    /// Ports to try in order if the primary port is unavailable.
+    /// Keep fallback in a dedicated high local range to avoid common
+    /// development ports (e.g. 3000/5173/8080).
+    private let fallbackPorts: [UInt16] = [11434, 11435, 11436, 11437, 11438, 11439, 11440, 11441, 11442, 11443, 11444]
     private var portsToTry: [UInt16] = []
     private var currentPortIndex: Int = 0
 
@@ -29,16 +31,6 @@ actor LocalHTTPServer {
     // Local apps (Continue, terminal, etc.) connect freely since they are
     // already running on the user's machine with full filesystem access.
     // This matches how Ollama and similar local AI servers handle security.
-
-    /// Origins allowed to make requests from a browser context.
-    /// Keep this loopback-only to prevent arbitrary public websites from
-    /// driving the local model via cross-site browser requests, while still
-    /// allowing the official Perspective Intelligence web app integration.
-    private static let allowedOriginHosts: Set<String> = [
-        "localhost", "127.0.0.1", "[::1]", "::1",
-        "perspectiveintelligence.app",
-        "www.perspectiveintelligence.app",
-    ]
 
     // MARK: - Pairing
 
@@ -88,10 +80,10 @@ actor LocalHTTPServer {
     /// Check if an Origin header value is in the allowlist by parsing the URL host.
     /// Browser-enforced Origin headers cannot be spoofed by JavaScript, so this
     /// provides reliable cross-origin protection without requiring a bearer token.
-    nonisolated private static func isAllowedOrigin(_ origin: String?) -> Bool {
+    nonisolated private static func isAllowedOrigin(_ origin: String?, allowedHosts: Set<String>) -> Bool {
         guard let origin = origin else { return true } // No Origin = not a browser cross-origin request
         guard let url = URL(string: origin), let host = url.host else { return false }
-        return allowedOriginHosts.contains(host.lowercased())
+        return allowedHosts.contains(host.lowercased())
     }
 
     /// Browser requests that omit Origin can still be cross-site (e.g. some no-cors subresource loads).
@@ -187,6 +179,7 @@ actor LocalHTTPServer {
         let serverPort = await self.port
         let host = request.headers["host"]
         let origin = request.headers["origin"]
+        let approvedOriginHosts = await AccessControlManager.shared.allowedBrowserOrigins()
 
         // 1a. Require Origin for browser-context requests to close no-origin CSRF paths.
         if Self.isBrowserRequestMissingOrigin(headers: request.headers, origin: origin) {
@@ -196,7 +189,7 @@ actor LocalHTTPServer {
             return .normal(HTTPResponse(status: 403, headers: Self.jsonHeaders(), body: data))
         }
 
-        let validatedCorsOrigin = Self.isAllowedOrigin(origin) ? (origin ?? "") : ""
+        let validatedCorsOrigin = Self.isAllowedOrigin(origin, allowedHosts: approvedOriginHosts) ? (origin ?? "") : ""
         if !Self.isAllowedHost(host, serverPort: serverPort) {
             logger.warning("[req:\(rid, privacy: .public)] Blocked: invalid Host header '\(host ?? "nil", privacy: .public)'")
             let msg = ["error": ["message": "Forbidden: invalid Host header"]]
@@ -205,7 +198,7 @@ actor LocalHTTPServer {
         }
 
         // 2. Validate Origin header (cross-origin protection)
-        if !Self.isAllowedOrigin(origin) {
+        if !Self.isAllowedOrigin(origin, allowedHosts: approvedOriginHosts) {
             logger.warning("[req:\(rid, privacy: .public)] Blocked: disallowed Origin '\(origin ?? "nil", privacy: .public)'")
             let msg = ["error": ["message": "Forbidden: origin not allowed"]]
             let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
@@ -214,6 +207,8 @@ actor LocalHTTPServer {
 
         // Compute CORS origin: echo back the validated origin, or empty if no Origin header
         let corsOrigin = validatedCorsOrigin
+        let originHost = URL(string: origin ?? "")?.host?.lowercased()
+        let rawPath = request.path.split(separator: "?").first.map(String.init) ?? request.path
 
         // CORS preflight support (no auth token required for preflight)
         if request.method == "OPTIONS" {
@@ -225,16 +220,15 @@ actor LocalHTTPServer {
             ], body: Data()))
         }
 
-        // No bearer token required — security is provided by:
-        // 1. Loopback-only binding (not reachable from network)
-        // 2. CORS origin allowlist (blocks random websites)
-        // 3. Host header validation (blocks DNS rebinding)
+        // Security stack:
+        // 1. Loopback-only binding
+        // 2. Host + Origin validation
+        // 3. Per-application bearer tokens on protected API/model routes
 
         // --- Pairing endpoint ---
         // POST /pair/verify { "code": "123456" }
         // Returns 200 with server info if code matches, 403 if not.
         // Only accessible from allowed origins (CORS validated above).
-        let rawPath = request.path.split(separator: "?").first.map(String.init) ?? request.path
         if request.method == "POST" && rawPath == "/pair/verify" {
             let currentCode = await self.pairingCode
             guard !currentCode.isEmpty else {
@@ -256,6 +250,7 @@ actor LocalHTTPServer {
                     "paired": true,
                     "port": serverPort,
                     "server": "Perspective Intelligence Server",
+                    "apiToken": await AccessControlManager.shared.tokenForOrigin(originHost) ?? "",
                 ]
                 let data = (try? JSONSerialization.data(withJSONObject: obj, options: [])) ?? Data()
                 return .normal(HTTPResponse(status: 200, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
@@ -264,6 +259,18 @@ actor LocalHTTPServer {
                 let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
                 return .normal(HTTPResponse(status: 403, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
             }
+        }
+
+        // Require per-application bearer tokens for model/API endpoints.
+        let authHeader = request.headers["authorization"] ?? request.headers["Authorization"]
+        switch await AccessControlManager.shared.authorize(path: rawPath, authHeader: authHeader, originHost: originHost) {
+        case .allow:
+            break
+        case .deny(let status, let message):
+            logger.warning("[req:\(rid, privacy: .public)] Auth denied: \(message, privacy: .public)")
+            let msg = ["error": ["message": message]]
+            let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
+            return .normal(HTTPResponse(status: status, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
         }
 
         // Normalize path: strip query string and trailing slash
