@@ -100,9 +100,11 @@ struct Perspective_ServerApp: App {
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .openChatWindow)) { _ in
+                    NSApp.activate(ignoringOtherApps: true)
                     openWindow(id: "chat")
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .openDashboard)) { _ in
+                    NSApp.activate(ignoringOtherApps: true)
                     openWindow(id: "dashboard")
                 }
         }
