@@ -55,6 +55,7 @@ actor LocalHTTPServer {
     private func generatePairingCode() {
         pairingCode = String(format: "%06d", Int.random(in: 0...999999))
         logger.log("Pairing code generated: \(self.pairingCode, privacy: .public)")
+        AppLog.info("Generated new pairing code", source: "server")
     }
 
     private init() {}
@@ -99,6 +100,7 @@ actor LocalHTTPServer {
            Self.isValidAuthToken(storedToken) {
             authToken = storedToken
             logger.log("Loaded auth token from \(Self.tokenFileURL.path, privacy: .public)")
+            AppLog.info("Loaded API bearer token", source: "auth")
             return
         }
 
@@ -145,6 +147,7 @@ actor LocalHTTPServer {
         authToken = normalizedToken
 
         logger.log("Auth token written to \(Self.tokenFileURL.path, privacy: .public)")
+        AppLog.info("API bearer token saved", source: "auth")
     }
 
     private nonisolated static func readStoredAuthToken() throws -> String? {
@@ -190,6 +193,7 @@ actor LocalHTTPServer {
     func start() async {
         guard !isRunning else {
             logger.log("Server already running, ignoring start request")
+            AppLog.warning("Start requested while server is already running", source: "server")
             return
         }
         lastError = nil
@@ -200,6 +204,7 @@ actor LocalHTTPServer {
             authToken = nil
             lastError = "Failed to persist auth token: \(error.localizedDescription)"
             logger.error("\(self.lastError ?? "")")
+            AppLog.error(lastError ?? "Failed to persist auth token", source: "auth")
             return
         }
         // Build port list: configured port first, then fallbacks (deduped)
@@ -213,6 +218,7 @@ actor LocalHTTPServer {
         guard currentPortIndex < portsToTry.count else {
             lastError = "Failed to start server: all ports in use (tried: \(portsToTry.map(String.init).joined(separator: ", ")))"
             logger.error("\\(self.lastError ?? \"\")")
+            AppLog.error(lastError ?? "Failed to start server: all ports in use", source: "server")
             return
         }
 
@@ -233,9 +239,11 @@ actor LocalHTTPServer {
             }
             listener?.start(queue: DispatchQueue.global())
             logger.log("Server starting on port \(targetPort)...")
+            AppLog.info("Starting local HTTP server on port \(targetPort)", source: "server")
         } catch {
             lastError = "Failed to create listener on port \(targetPort): \(error.localizedDescription)"
             logger.error("Failed to start listener: \(String(describing: error))")
+            AppLog.warning("Port \(targetPort) unavailable: \(error.localizedDescription)", source: "server")
             // Try next port
             currentPortIndex += 1
             await tryStartOnNextPort()
@@ -248,6 +256,7 @@ actor LocalHTTPServer {
         connections.forEach { $0.cancel() }
         connections.removeAll()
         isRunning = false
+        AppLog.info("Local HTTP server stopped", source: "server")
     }
 
     // MARK: Request handling
@@ -282,6 +291,7 @@ actor LocalHTTPServer {
         if request.method == "POST" && rawPath == "/pair/verify" {
             let currentCode = await self.pairingCode
             guard !currentCode.isEmpty else {
+                AppLog.warning("Pairing requested while pairing is unavailable", source: "pairing")
                 let msg = ["error": ["message": "Pairing not available"]]
                 let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
                 return .normal(HTTPResponse(status: 503, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
@@ -295,6 +305,7 @@ actor LocalHTTPServer {
             }
 
             if submittedCode == currentCode {
+                AppLog.info("Pairing code verified", source: "pairing")
                 let serverPort = await self.port
                 let obj: [String: Any] = [
                     "paired": true,
@@ -305,6 +316,7 @@ actor LocalHTTPServer {
                 let data = (try? JSONSerialization.data(withJSONObject: obj, options: [])) ?? Data()
                 return .normal(HTTPResponse(status: 200, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
             } else {
+                AppLog.warning("Invalid pairing code rejected", source: "pairing")
                 let msg = ["error": ["message": "Invalid pairing code"]]
                 let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
                 return .normal(HTTPResponse(status: 403, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
@@ -318,6 +330,7 @@ actor LocalHTTPServer {
             let provided = authHeader.hasPrefix("Bearer ") ? String(authHeader.dropFirst(7)) : ""
             if provided != token {
                 logger.warning("[req:\(rid, privacy: .public)] Blocked: invalid or missing auth token")
+                AppLog.warning("Blocked request with invalid or missing bearer token", source: "auth")
                 let msg = ["error": ["message": "Unauthorized: invalid or missing bearer token. Token is stored at \(Self.tokenFileURL.path)"]]
                 let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
                 return .normal(HTTPResponse(status: 401, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
@@ -335,9 +348,10 @@ actor LocalHTTPServer {
         }()
 
         // Basic request logging for troubleshooting
-    let contentType = request.headers["content-type"] ?? request.headers["Content-Type"] ?? ""
-    let contentLength = request.headers["content-length"] ?? request.headers["Content-Length"] ?? ""
+        let contentType = request.headers["content-type"] ?? request.headers["Content-Type"] ?? ""
+        let contentLength = request.headers["content-length"] ?? request.headers["Content-Length"] ?? ""
         logger.log("[req:\(rid, privacy: .public)] HTTP \(request.method, privacy: .public) \(path, privacy: .public) ct=\(contentType, privacy: .public) cl=\(contentLength, privacy: .public)")
+        AppLog.debug("\(request.method) \(path)", source: "http")
         if request.method == "POST" {
             logger.log("[req:\(rid, privacy: .public)] body: \(Self.truncateBodyForLog(request.bodyData), privacy: .public)")
         }
@@ -355,6 +369,7 @@ actor LocalHTTPServer {
                 return .normal(resp)
             } catch {
                 logger.error("[req:\(rid, privacy: .public)] /v1/models error: \(String(describing: error), privacy: .public)")
+                AppLog.error("/v1/models failed: \(error.localizedDescription)", source: "http")
                 let msg = ["error": ["message": error.localizedDescription]]
                 let data = try? JSONSerialization.data(withJSONObject: msg, options: [])
                 return .normal(HTTPResponse(status: 400, headers: [
@@ -833,6 +848,7 @@ actor LocalHTTPServer {
                 }
             } catch {
                 logger.error("[req:\(rid, privacy: .public)] /v1/chat/completions error: \(String(describing: error), privacy: .public) body=\(Self.truncateBodyForLog(request.bodyData), privacy: .public)")
+                AppLog.error("/v1/chat/completions failed: \(error.localizedDescription)", source: "http")
                 let msg = ["error": ["message": error.localizedDescription]]
                 let data = try? JSONSerialization.data(withJSONObject: msg, options: [])
                 return .normal(HTTPResponse(status: 400, headers: [
@@ -843,6 +859,7 @@ actor LocalHTTPServer {
         }
         // Not Found
         logger.error("[req:\(rid, privacy: .public)] 404 Not Found \(path, privacy: .public)")
+        AppLog.warning("404 Not Found: \(path)", source: "http")
         let body = Data("Not Found".utf8)
         return .normal(HTTPResponse(status: 404, headers: [
             "Content-Type": "text/plain",
@@ -856,6 +873,7 @@ actor LocalHTTPServer {
         switch state {
         case .ready:
             logger.log("HTTP server listening on localhost:\(currentPort) (loopback only)")
+            AppLog.info("HTTP server listening on localhost:\(currentPort)", source: "server")
             isRunning = true
             lastError = nil
         case .failed(let error):
@@ -869,6 +887,7 @@ actor LocalHTTPServer {
             }
             
             logger.error("Listener failed on port \(currentPort): \(String(describing: error))")
+            AppLog.error("Listener failed on port \(currentPort): \(error.localizedDescription)", source: "server")
             listener?.cancel()
             listener = nil
             isRunning = false
@@ -878,16 +897,20 @@ actor LocalHTTPServer {
                 currentPortIndex += 1
                 if currentPortIndex < fallbackPorts.count {
                     logger.log("Port \(currentPort) in use, trying next port...")
+                    AppLog.warning("Port \(currentPort) in use; trying next port", source: "server")
                     await tryStartOnNextPort()
                 } else {
                     lastError = "All ports in use. Tried: \(fallbackPorts.map(String.init).joined(separator: ", "))"
                     logger.error("\(self.lastError ?? "")")
+                    AppLog.error(lastError ?? "All ports in use", source: "server")
                 }
             } else {
                 lastError = "Server failed: \(error.localizedDescription)"
+                AppLog.error(lastError ?? "Server failed", source: "server")
             }
         case .cancelled:
             logger.log("Listener cancelled")
+            AppLog.info("Listener cancelled", source: "server")
             isRunning = false
         default:
             break

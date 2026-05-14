@@ -39,6 +39,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate, SPUStand
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Disable window state restoration to prevent previously opened windows from appearing
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+        AppLog.info("Application launched", source: "app")
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

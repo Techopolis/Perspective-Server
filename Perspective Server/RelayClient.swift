@@ -68,8 +68,10 @@ actor RelayClient {
     func connect() async {
         guard !isEnabled else {
             logger.log("RelayClient.connect() skipped — already enabled")
+            AppLog.debug("Relay connect skipped because relay is already enabled", source: "relay")
             return
         }
+        AppLog.info("Connecting to relay", source: "relay")
         isEnabled = true
         reconnectDelay = 2
         await startConnection()
@@ -79,6 +81,7 @@ actor RelayClient {
         isEnabled = false
         cancelAll()
         updateStatus(.disconnected)
+        AppLog.info("Relay disconnected", source: "relay")
     }
 
     // MARK: - Connection Lifecycle
@@ -114,6 +117,7 @@ actor RelayClient {
         let delay = reconnectDelay
         reconnectDelay = min(reconnectDelay * 2, maxReconnectDelay)
         logger.log("Scheduling reconnect in \(delay, privacy: .public)s")
+        AppLog.warning("Scheduling relay reconnect in \(Int(delay))s", source: "relay")
         updateStatus(.disconnected)
 
         reconnectTask = Task { [weak self] in
@@ -129,6 +133,7 @@ actor RelayClient {
     private func receiveLoop() async {
         guard let ws = webSocketTask else {
             logger.error("RelayClient: receiveLoop — no webSocketTask")
+            AppLog.error("Relay receive loop started without a WebSocket task", source: "relay")
             return
         }
         updateStatus(.waitingForAuth)
@@ -140,6 +145,7 @@ actor RelayClient {
             } catch {
                 guard isEnabled else { return }
                 logger.error("WebSocket receive error: \(String(describing: error), privacy: .public)")
+                AppLog.error("Relay receive error: \(error.localizedDescription)", source: "relay")
                 scheduleReconnect()
                 return
             }
@@ -166,10 +172,12 @@ actor RelayClient {
         switch type {
         case "welcome":
             logger.log("Received welcome from relay")
+            AppLog.info("Relay welcome received", source: "relay")
             await sendAuth()
 
         case "auth_ok":
             logger.log("Auth accepted, waiting for user to pair")
+            AppLog.info("Relay authentication accepted", source: "relay")
             reconnectDelay = 2
             updateStatus(.waitingForPairing)
             startPingTimer()
@@ -177,12 +185,14 @@ actor RelayClient {
         case "paired":
             let userId = json["userId"] as? String ?? "unknown"
             logger.log("Paired with user: \(userId, privacy: .public)")
+            AppLog.info("Relay paired with user \(userId)", source: "relay")
             updateStatus(.paired(userId: userId))
 
         case "relay_token":
             if let token = json["relayToken"] as? String {
                 UserDefaults.standard.set(token, forKey: relayTokenKey)
                 logger.log("Saved relay token for automatic reconnection")
+                AppLog.info("Saved relay token for automatic reconnection", source: "relay")
             }
 
         case "chat_request":
@@ -194,6 +204,7 @@ actor RelayClient {
             // Serialize payload to Data immediately to avoid Sendable issues
             guard let payloadData = try? JSONSerialization.data(withJSONObject: payload) else {
                 logger.warning("Failed to serialize chat_request payload")
+                AppLog.warning("Failed to serialize relay chat request", source: "relay")
                 return
             }
             Task { [weak self] in
@@ -207,10 +218,12 @@ actor RelayClient {
         case "error":
             let msg = json["message"] as? String ?? "Unknown relay error"
             logger.error("Relay error: \(msg, privacy: .public)")
+            AppLog.error("Relay error: \(msg)", source: "relay")
             // If the relay token was rejected, clear it so next reconnect uses pairing code
             if msg.contains("relay token") {
                 UserDefaults.standard.removeObject(forKey: relayTokenKey)
                 logger.log("Cleared invalid relay token")
+                AppLog.warning("Cleared invalid relay token", source: "relay")
             }
             updateStatus(.error(msg))
 
@@ -227,6 +240,7 @@ actor RelayClient {
             let authMessage: [String: Any] = ["type": "auth", "relayToken": relayToken]
             await sendJSON(authMessage)
             logger.log("Sent auth with relay token")
+            AppLog.info("Sent relay authentication with saved relay token", source: "relay")
             return
         }
 
@@ -234,6 +248,7 @@ actor RelayClient {
         let code = await LocalHTTPServer.shared.pairingCode
         guard !code.isEmpty else {
             logger.error("No pairing code available, cannot authenticate")
+            AppLog.error("No pairing code available for relay authentication", source: "relay")
             updateStatus(.error("No pairing code"))
             return
         }
@@ -241,6 +256,7 @@ actor RelayClient {
         let authMessage: [String: Any] = ["type": "auth", "code": code]
         await sendJSON(authMessage)
         logger.log("Sent auth with pairing code")
+        AppLog.info("Sent relay authentication with pairing code", source: "relay")
     }
 
     // MARK: - Chat Request Handling
@@ -248,6 +264,7 @@ actor RelayClient {
     private func handleChatRequest(requestId: String, payloadData: Data) async {
         let port = await LocalHTTPServer.shared.getPort()
         let url = URL(string: "http://127.0.0.1:\(port)/v1/chat/completions")!
+        AppLog.info("Forwarding relay chat request to local server", source: "relay")
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -270,6 +287,7 @@ actor RelayClient {
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                 let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
                 logger.error("Local server returned status \(statusCode, privacy: .public)")
+                AppLog.error("Local server returned status \(statusCode) for relay chat request", source: "relay")
                 await sendChatError(requestId: requestId, error: "Local server error (status \(statusCode))")
                 return
             }
@@ -304,6 +322,7 @@ actor RelayClient {
             }
         } catch {
             logger.error("Error streaming from local server: \(String(describing: error), privacy: .public)")
+            AppLog.error("Error streaming from local server: \(error.localizedDescription)", source: "relay")
             await sendChatError(requestId: requestId, error: "Streaming error: \(error.localizedDescription)")
         }
     }
@@ -340,6 +359,7 @@ actor RelayClient {
             try await webSocketTask?.send(.string(text))
         } catch {
             logger.error("Failed to send WebSocket message: \(String(describing: error), privacy: .public)")
+            AppLog.error("Failed to send relay WebSocket message: \(error.localizedDescription)", source: "relay")
         }
     }
 
