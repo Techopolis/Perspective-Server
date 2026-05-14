@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 struct MenuBarContentView: View {
     @Environment(\.openWindow) private var openWindow
@@ -17,9 +20,11 @@ struct MenuBarContentView: View {
                 .environmentObject(serverController)
             Divider()
             Button("Open Dashboard") {
+                NSApp.activate(ignoringOtherApps: true)
                 openWindow(id: "dashboard")
             }
             Button("Open Chat Window") {
+                NSApp.activate(ignoringOtherApps: true)
                 openWindow(id: "chat")
             }
             Divider()

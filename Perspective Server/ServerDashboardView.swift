@@ -8,6 +8,11 @@
 import SwiftUI
 
 struct ServerDashboardView: View {
+    private enum DashboardTab: String, CaseIterable {
+        case dashboard = "Dashboard"
+        case settings = "Settings"
+    }
+
     @EnvironmentObject private var serverController: ServerController
     @Environment(\.openWindow) private var openWindow
     @Environment(\.colorScheme) private var colorScheme
@@ -17,6 +22,7 @@ struct ServerDashboardView: View {
     @State private var testResult: String = ""
     @State private var isTesting: Bool = false
     @State private var logMessages: [LogMessage] = []
+    @State private var selectedTab: DashboardTab = .dashboard
     @State private var autoStart: Bool = true
     @State private var metrics: MetricsSnapshot = MetricsSnapshot(
         totalRequests: 0, totalInferenceRequests: 0,
@@ -35,32 +41,38 @@ struct ServerDashboardView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     // Header
                     headerSection
-                    
-                    // Main Status Card
-                    mainStatusCard
 
-                    // Server Stats Card
-                    if serverController.isRunning {
-                        serverStatsCard
+                    tabSelector
+
+                    if selectedTab == .dashboard {
+                        // Main Status Card
+                        mainStatusCard
+
+                        // Server Stats Card
+                        if serverController.isRunning {
+                            serverStatsCard
+                        }
+
+                        // Remote Access Card
+                        remoteAccessCard
+
+                        // Server Controls Card
+                        serverControlsCard
+
+                        // Xcode Integration Card
+                        xcodeIntegrationCard
+
+                        // API Endpoints Card
+                        endpointsCard
+
+                        // Quick Actions Card
+                        actionsCard
+
+                        // Connection Test Card
+                        testConnectionCard
+                    } else {
+                        settingsTabCard
                     }
-
-                    // Remote Access Card
-                    remoteAccessCard
-
-                    // Server Controls Card
-                    serverControlsCard
-                    
-                    // Xcode Integration Card
-                    xcodeIntegrationCard
-                    
-                    // API Endpoints Card
-                    endpointsCard
-                    
-                    // Quick Actions Card
-                    actionsCard
-                    
-                    // Connection Test Card
-                    testConnectionCard
                     
                     Spacer(minLength: 20)
                 }
@@ -84,7 +96,7 @@ struct ServerDashboardView: View {
             refreshMetrics()
             metricsTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
                 Task { @MainActor in
-                    await refreshMetrics()
+                    refreshMetrics()
                 }
             }
         }
@@ -158,6 +170,36 @@ struct ServerDashboardView: View {
             .accessibilityLabel("Open chat window")
         }
     }
+
+    private var tabSelector: some View {
+        Picker("Section", selection: $selectedTab) {
+            ForEach(DashboardTab.allCases, id: \.self) { tab in
+                Text(tab.rawValue).tag(tab)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityLabel("Dashboard section")
+    }
+
+    private var settingsTabCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("Settings", systemImage: "gearshape")
+                .font(.headline)
+                .foregroundColor(.primary)
+
+            Divider()
+
+            SettingsView(embeddedInDashboard: true)
+                .frame(minHeight: 560)
+        }
+        .padding(20)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color(NSColor.separatorColor), lineWidth: 1)
+        )
+    }
     
     // MARK: - Main Status Card
     
@@ -203,7 +245,7 @@ struct ServerDashboardView: View {
                             .foregroundColor(.primary)
                         
                         if serverController.isRunning {
-                            Text("Listening on port \(serverController.port)")
+                            Text(verbatim: "Listening on port \(serverController.port)")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         } else if let error = serverController.errorMessage {
@@ -221,9 +263,13 @@ struct ServerDashboardView: View {
                 
                 if serverController.isRunning {
                     HStack(spacing: 8) {
-                        Label("http://127.0.0.1:\(serverController.port)", systemImage: "link")
-                            .font(.system(size: 13, design: .monospaced))
-                            .foregroundColor(.accentColor)
+                        Label {
+                            Text(verbatim: "http://127.0.0.1:\(serverController.port)")
+                        } icon: {
+                            Image(systemName: "link")
+                        }
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(.accentColor)
                         
                         Button(action: {
                             copyToClipboard(
@@ -775,7 +821,10 @@ struct ServerDashboardView: View {
                     accessibilityLabel: copiedAccessibilityLabel(defaultLabel: "Copy cURL, Test command", copiedLabel: "cURL command copied", copiedMessage: "cURL command copied"),
                     accessibilityValue: copiedAccessibilityValue(copiedMessage: "cURL command copied"),
                     action: {
-                        let cmd = "curl http://127.0.0.1:\(serverController.port)/api/tags"
+                        let token = loadBearerToken()
+                        let cmd = token.isEmpty
+                            ? "curl http://127.0.0.1:\(serverController.port)/api/tags"
+                            : "curl -H \"Authorization: Bearer \(token)\" http://127.0.0.1:\(serverController.port)/api/tags"
                         copyToClipboard(cmd, message: "cURL command copied")
                     }
                 )
@@ -785,11 +834,7 @@ struct ServerDashboardView: View {
                     subtitle: "Preferences",
                     icon: "gearshape",
                     action: {
-                        if #available(macOS 14.0, *) {
-                            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                        } else {
-                            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-                        }
+                        selectedTab = .settings
                     }
                 )
                 
@@ -1041,9 +1086,11 @@ struct ServerDashboardView: View {
         Task {
             let running = await LocalHTTPServer.shared.getIsRunning()
             let port = await LocalHTTPServer.shared.getPort()
+            let error = await LocalHTTPServer.shared.getLastError()
             await MainActor.run {
                 serverController.isRunning = running
                 serverController.port = port
+                serverController.errorMessage = error
                 localPort = String(port)
             }
         }
@@ -1067,7 +1114,10 @@ struct ServerDashboardView: View {
         Task {
             let url = URL(string: "http://127.0.0.1:\(serverController.port)/api/tags")!
             do {
-                let request = URLRequest(url: url)
+                var request = URLRequest(url: url)
+                if let token = await LocalHTTPServer.shared.getAuthToken() {
+                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                }
                 let (data, response) = try await URLSession.shared.data(for: request)
                 
                 if let httpResponse = response as? HTTPURLResponse {
@@ -1108,7 +1158,12 @@ struct ServerDashboardView: View {
         }
     }
 
-    // Bearer token removed — security is handled by loopback binding + CORS + Host validation
+    // Protected API routes require the configured bearer token.
+
+    private func loadBearerToken() -> String {
+        ((try? String(contentsOf: LocalHTTPServer.tokenFileURL, encoding: .utf8)) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     private func isCopied(_ copiedMessage: String) -> Bool {
         showCopiedToast && copiedText == copiedMessage
@@ -1129,6 +1184,13 @@ struct ServerDashboardView: View {
         var lines = ["URL: \(fullURL)"]
         if includeOpenAIBaseURL {
             lines.append("OpenAI Base URL: \(fullURL)")
+        }
+
+        let token = loadBearerToken()
+        if token.isEmpty {
+            lines.append("Authorization: Bearer <read token from \(LocalHTTPServer.tokenFileURL.path)>")
+        } else {
+            lines.append("Authorization: Bearer \(token)")
         }
 
         return lines.joined(separator: "\n")

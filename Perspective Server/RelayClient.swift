@@ -252,6 +252,9 @@ actor RelayClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = await LocalHTTPServer.shared.getAuthToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         // Ensure streaming is enabled
         if var payloadJSON = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any] {

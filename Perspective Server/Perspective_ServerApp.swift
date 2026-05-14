@@ -83,7 +83,7 @@ struct Perspective_ServerApp: App {
     var body: some Scene {
         #if os(macOS)
         // Main Dashboard Window - this is the default window that opens on launch
-        WindowGroup("Dashboard", id: "dashboard") {
+        Window("Dashboard", id: "dashboard") {
             ServerDashboardView()
                 .environmentObject(serverController)
                 .task {
@@ -98,9 +98,11 @@ struct Perspective_ServerApp: App {
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .openChatWindow)) { _ in
+                    NSApp.activate(ignoringOtherApps: true)
                     openWindow(id: "chat")
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .openDashboard)) { _ in
+                    NSApp.activate(ignoringOtherApps: true)
                     openWindow(id: "dashboard")
                 }
         }
@@ -131,7 +133,7 @@ struct Perspective_ServerApp: App {
         }
         
         // Chat Window - suppressed on launch, only opens when requested
-        WindowGroup("Chat", id: "chat") {
+        Window("Chat", id: "chat") {
             ChatView()
                 .environmentObject(serverController)
         }

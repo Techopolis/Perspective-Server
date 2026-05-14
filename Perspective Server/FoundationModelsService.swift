@@ -381,21 +381,25 @@ nonisolated final class FoundationModelsService: @unchecked Sendable {
 
         let inferenceStart = ContinuousClock.now
 
-        // Always use tools for file operations - this enables the model to create/edit files
-        // even when the client doesn't explicitly request tool support
+        // Use built-in file tools only when the client explicitly requests tool support.
+        // Requests without tools (e.g. from Ollama-compatible clients like OpenClaw) get the
+        // clean, tool-free generation path which avoids tool-call hallucinations.
         #if canImport(FoundationModels)
         if #available(macOS 26.0, iOS 26.0, visionOS 26.0, *) {
-            // Use native Foundation Models with built-in file tools
-            let result = try await handleChatCompletionWithBuiltInTools(request)
-            let elapsed = ContinuousClock.now - inferenceStart
-            let ttft = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
-            let outputLen = result.choices.first?.message.content.count ?? 0
-            await ServerMetrics.shared.recordInference(tokens: max(1, outputLen / 4), timeToFirstToken: ttft)
-            return result
+            if let tools = request.tools, !tools.isEmpty {
+                // Client explicitly requested tools — use native Foundation Models with built-in file tools
+                let result = try await handleChatCompletionWithBuiltInTools(request)
+                let elapsed = ContinuousClock.now - inferenceStart
+                let ttft = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+                let outputLen = result.choices.first?.message.content.count ?? 0
+                await ServerMetrics.shared.recordInference(tokens: max(1, outputLen / 4), timeToFirstToken: ttft)
+                return result
+            }
+            // No tools requested — fall through to clean generation path below
         }
         #endif
 
-        // Fallback for older systems: If tools are provided, run the tool-calling orchestration flow.
+        // If tools are provided (older systems fallback), run the tool-calling orchestration flow.
         if let tools = request.tools, !tools.isEmpty {
             let result = try await handleChatCompletionWithTools(request, tools: tools)
             let elapsed = ContinuousClock.now - inferenceStart

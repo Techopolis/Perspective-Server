@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mdfind OpenClaw)",
+      "Bash(brew list:*)",
+      "Bash(pip list:*)",
+      "Bash(pip3 list:*)",
+      "Bash(cargo install:*)",
+      "Read(//usr/local/bin/**)",
+      "Bash(/dev/null -iname \"*claw*\")",
+      "Bash(find ~/Developer -maxdepth 3 -iname *clawd*)",
+      "Bash(find ~/Developer -maxdepth 3 -iname *openclaw*)",
+      "Bash(mdfind clawdbot:*)",
+      "Bash(launchctl list:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(''''Name:'''', d.get\\(''''name''''\\)\\); print\\(''''Version:'''', d.get\\(''''version''''\\)\\); print\\(''''Description:'''', d.get\\(''''description'''',''''''''\\)\\)\")",
+      "Bash(cat /Users/mikedoise/.nvm/versions/node/v22.22.0/lib/node_modules/clawdbot/docs/providers/*.md)",
+      "Bash(find /Users/mikedoise/.clawdbot -name *.json -o -name *.json5 -o -name *.jsonc -o -name *.yaml -o -name *.yml)",
+      "Bash(curl -s http://localhost:11434/)",
+      "Bash(find /Users/mikedoise/.clawdbot -name config* -o -name settings* -o -name *.json5 -o -name *.jsonc)",
+      "Bash(npm view:*)",
+      "Bash(openclaw --version)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(nvm list:*)",
+      "Bash(nvm use:*)",
+      "Bash(npm i:*)",
+      "Bash(openclaw --help)",
+      "Bash(openclaw models:*)",
+      "Bash(openclaw doctor:*)",
+      "Bash(python3 -m json.tool)",
+      "Read(//Users/mikedoise/.openclaw/**)",
+      "Bash(openclaw health:*)",
+      "Bash(openclaw agent:*)",
+      "Bash(openclaw agents:*)",
+      "Bash(openclaw gateway:*)"
+    ]
+  }
+}

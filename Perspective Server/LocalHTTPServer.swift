@@ -14,31 +14,36 @@ actor LocalHTTPServer {
     private(set) var lastError: String? = nil
     private var activeRequestCount: Int = 0
 
-    /// Ports to try in order if the primary port is unavailable
-    private let fallbackPorts: [UInt16] = [11434, 11435, 11436, 11437, 8080]
+    /// Ports to try in order if the primary port is unavailable.
+    /// Keep fallback in a dedicated local API range to avoid common dev ports.
+    private let fallbackPorts: [UInt16] = [
+        11434, 11435, 11436, 11437, 11438, 11439,
+        11440, 11441, 11442, 11443, 11444
+    ]
     private var portsToTry: [UInt16] = []
     private var currentPortIndex: Int = 0
 
     // MARK: - Security
     //
-    // Security model (no bearer token required):
-    // 1. Loopback-only binding — server is unreachable from the network
-    // 2. CORS origin allowlist — blocks random websites from using the AI
-    // 3. Host header validation — prevents DNS rebinding attacks
-    //
-    // Local apps (Continue, terminal, etc.) connect freely since they are
-    // already running on the user's machine with full filesystem access.
-    // This matches how Ollama and similar local AI servers handle security.
+    // Security model:
+    // 1. Loopback-only binding keeps the server local to this Mac.
+    // 2. Bearer token auth is required for non-preflight API requests.
+    // 3. Host, origin, and client allowlists are optional policy layers and
+    //    are not required to use the local API.
 
-    /// Origins allowed to make cross-origin requests from a browser.
-    /// Localhost covers local dev and browser extensions.
-    /// The Perspective Intelligence web app is allowed so Basic tier users
-    /// can stream directly from the browser to their Mac.
-    private static let allowedOriginHosts: Set<String> = [
-        "localhost", "127.0.0.1", "[::1]", "::1",
-        "perspectiveintelligence.app",
-        "www.perspectiveintelligence.app",
-    ]
+    /// Bearer token required for all non-preflight requests.
+    private var authToken: String?
+
+    static let minimumAuthTokenLength = 5
+
+    private static let tokenDirectory: URL = {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return appSupport.appendingPathComponent("Perspective Server")
+    }()
+
+    static let tokenFileURL: URL = {
+        tokenDirectory.appendingPathComponent("auth_token")
+    }()
 
     // MARK: - Pairing
 
@@ -70,28 +75,88 @@ actor LocalHTTPServer {
 
     // MARK: - Security helpers
 
-    /// Validate Host header to prevent DNS rebinding attacks.
-    nonisolated private static func isAllowedHost(_ host: String?, serverPort: UInt16) -> Bool {
-        guard let host = host else { return true } // No Host header = direct TCP, not from browser
-        let lowered = host.lowercased()
-        let allowed = [
-            "localhost:\(serverPort)",
-            "127.0.0.1:\(serverPort)",
-            "[::1]:\(serverPort)",
-            "localhost",
-            "127.0.0.1",
-            "[::1]"
-        ]
-        return allowed.contains(lowered)
+    nonisolated static func normalizedAuthToken(_ token: String) -> String {
+        token.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Check if an Origin header value is in the allowlist by parsing the URL host.
-    /// Browser-enforced Origin headers cannot be spoofed by JavaScript, so this
-    /// provides reliable cross-origin protection without requiring a bearer token.
-    nonisolated private static func isAllowedOrigin(_ origin: String?) -> Bool {
-        guard let origin = origin else { return true } // No Origin = not a browser cross-origin request
-        guard let url = URL(string: origin), let host = url.host else { return false }
-        return allowedOriginHosts.contains(host.lowercased())
+    nonisolated static func authTokenValidationMessage(for token: String) -> String? {
+        let normalized = normalizedAuthToken(token)
+        guard normalized.count >= minimumAuthTokenLength else {
+            return "Token must be more than 4 characters."
+        }
+        guard normalized.rangeOfCharacter(from: .newlines) == nil else {
+            return "Token cannot contain line breaks."
+        }
+        return nil
+    }
+
+    nonisolated static func isValidAuthToken(_ token: String) -> Bool {
+        authTokenValidationMessage(for: token) == nil
+    }
+
+    private func loadOrCreateAuthToken() throws {
+        if let storedToken = try Self.readStoredAuthToken(),
+           Self.isValidAuthToken(storedToken) {
+            authToken = storedToken
+            logger.log("Loaded auth token from \(Self.tokenFileURL.path, privacy: .public)")
+            return
+        }
+
+        try generateAndStoreToken()
+    }
+
+    /// Generate a cryptographic auth token and write it to disk.
+    /// Local applications can read the file; web pages cannot.
+    @discardableResult
+    private func generateAndStoreToken() throws -> String {
+        let token = UUID().uuidString
+        try storeAuthToken(token)
+        return token
+    }
+
+    private func storeAuthToken(_ token: String) throws {
+        let normalizedToken = Self.normalizedAuthToken(token)
+        if let validationMessage = Self.authTokenValidationMessage(for: normalizedToken) {
+            throw NSError(
+                domain: "LocalHTTPServer",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: validationMessage]
+            )
+        }
+
+        authToken = nil
+
+        let fm = FileManager.default
+        try fm.createDirectory(at: Self.tokenDirectory, withIntermediateDirectories: true)
+        try normalizedToken.write(to: Self.tokenFileURL, atomically: true, encoding: .utf8)
+        // Restrict file permissions to owner-only (0600)
+        try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: Self.tokenFileURL.path)
+
+        let persistedToken = try String(contentsOf: Self.tokenFileURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard persistedToken == normalizedToken else {
+            throw NSError(
+                domain: "LocalHTTPServer",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Persisted auth token did not match generated token"]
+            )
+        }
+
+        authToken = normalizedToken
+
+        logger.log("Auth token written to \(Self.tokenFileURL.path, privacy: .public)")
+    }
+
+    private nonisolated static func readStoredAuthToken() throws -> String? {
+        guard FileManager.default.fileExists(atPath: tokenFileURL.path) else {
+            return nil
+        }
+        return try String(contentsOf: tokenFileURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    nonisolated private static func corsOrigin(for origin: String?) -> String {
+        origin ?? ""
     }
 
     nonisolated private static func jsonHeaders(corsOrigin: String? = nil) -> [String: String] {
@@ -103,6 +168,23 @@ actor LocalHTTPServer {
         return headers
     }
 
+    /// Return the current auth token (for UI display / copy-to-clipboard).
+    func getAuthToken() -> String? {
+        if let authToken {
+            return authToken
+        }
+        return try? Self.readStoredAuthToken()
+    }
+
+    func setAuthToken(_ token: String) throws {
+        try storeAuthToken(token)
+    }
+
+    @discardableResult
+    func rotateAuthToken() throws -> String {
+        try generateAndStoreToken()
+    }
+
     // MARK: Lifecycle
 
     func start() async {
@@ -112,6 +194,14 @@ actor LocalHTTPServer {
         }
         lastError = nil
         generatePairingCode()
+        do {
+            try loadOrCreateAuthToken()
+        } catch {
+            authToken = nil
+            lastError = "Failed to persist auth token: \(error.localizedDescription)"
+            logger.error("\(self.lastError ?? "")")
+            return
+        }
         // Build port list: configured port first, then fallbacks (deduped)
         portsToTry = [port] + fallbackPorts.filter { $0 != port }
         currentPortIndex = 0
@@ -172,30 +262,8 @@ actor LocalHTTPServer {
 
         await ServerMetrics.shared.recordRequest()
 
-        // --- Security layer ---
-
-        // 1. Validate Host header (DNS rebinding protection)
-        let serverPort = await self.port
-        let host = request.headers["host"]
         let origin = request.headers["origin"]
-        let validatedCorsOrigin = Self.isAllowedOrigin(origin) ? (origin ?? "") : ""
-        if !Self.isAllowedHost(host, serverPort: serverPort) {
-            logger.warning("[req:\(rid, privacy: .public)] Blocked: invalid Host header '\(host ?? "nil", privacy: .public)'")
-            let msg = ["error": ["message": "Forbidden: invalid Host header"]]
-            let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
-            return .normal(HTTPResponse(status: 403, headers: Self.jsonHeaders(corsOrigin: validatedCorsOrigin), body: data))
-        }
-
-        // 2. Validate Origin header (cross-origin protection)
-        if !Self.isAllowedOrigin(origin) {
-            logger.warning("[req:\(rid, privacy: .public)] Blocked: disallowed Origin '\(origin ?? "nil", privacy: .public)'")
-            let msg = ["error": ["message": "Forbidden: origin not allowed"]]
-            let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
-            return .normal(HTTPResponse(status: 403, headers: Self.jsonHeaders(), body: data))
-        }
-
-        // Compute CORS origin: echo back the validated origin, or empty if no Origin header
-        let corsOrigin = validatedCorsOrigin
+        let corsOrigin = Self.corsOrigin(for: origin)
 
         // CORS preflight support (no auth token required for preflight)
         if request.method == "OPTIONS" {
@@ -207,15 +275,9 @@ actor LocalHTTPServer {
             ], body: Data()))
         }
 
-        // No bearer token required — security is provided by:
-        // 1. Loopback-only binding (not reachable from network)
-        // 2. CORS origin allowlist (blocks random websites)
-        // 3. Host header validation (blocks DNS rebinding)
-
         // --- Pairing endpoint ---
         // POST /pair/verify { "code": "123456" }
-        // Returns 200 with server info if code matches, 403 if not.
-        // Only accessible from allowed origins (CORS validated above).
+        // Returns 200 with server info and the configured API token if the code matches.
         let rawPath = request.path.split(separator: "?").first.map(String.init) ?? request.path
         if request.method == "POST" && rawPath == "/pair/verify" {
             let currentCode = await self.pairingCode
@@ -238,6 +300,7 @@ actor LocalHTTPServer {
                     "paired": true,
                     "port": serverPort,
                     "server": "Perspective Intelligence Server",
+                    "apiToken": await self.getAuthToken() ?? "",
                 ]
                 let data = (try? JSONSerialization.data(withJSONObject: obj, options: [])) ?? Data()
                 return .normal(HTTPResponse(status: 200, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
@@ -245,6 +308,19 @@ actor LocalHTTPServer {
                 let msg = ["error": ["message": "Invalid pairing code"]]
                 let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
                 return .normal(HTTPResponse(status: 403, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
+            }
+        }
+
+        // Bearer token is the required API access control. Hosts, origins, and
+        // client allowlists are optional policy layers and are not required here.
+        if let token = await self.authToken {
+            let authHeader = request.headers["authorization"] ?? request.headers["Authorization"] ?? ""
+            let provided = authHeader.hasPrefix("Bearer ") ? String(authHeader.dropFirst(7)) : ""
+            if provided != token {
+                logger.warning("[req:\(rid, privacy: .public)] Blocked: invalid or missing auth token")
+                let msg = ["error": ["message": "Unauthorized: invalid or missing bearer token. Token is stored at \(Self.tokenFileURL.path)"]]
+                let data = (try? JSONSerialization.data(withJSONObject: msg, options: [])) ?? Data()
+                return .normal(HTTPResponse(status: 401, headers: Self.jsonHeaders(corsOrigin: corsOrigin), body: data))
             }
         }
 
