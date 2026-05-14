@@ -1,6 +1,6 @@
 //
 //  FoundationModelsService.swift
-//  Perspective Server
+//  afm-server
 //
 //  Created by Michael Doise on 9/14/25.
 //
@@ -349,7 +349,7 @@ actor SessionManager {
 /// A service that bridges OpenAI-compatible requests to Apple's on-device Foundation Models.
 nonisolated final class FoundationModelsService: @unchecked Sendable {
     static let shared = FoundationModelsService()
-    private let logger = Logger(subsystem: "com.example.PerspectiveServer", category: "FoundationModelsService")
+    private let logger = Logger(subsystem: "online.techopolis.afm-server", category: "FoundationModelsService")
     private let createdEpoch: Int = Int(Date().timeIntervalSince1970)
 
     /// Controls how many LLM inference calls run concurrently.

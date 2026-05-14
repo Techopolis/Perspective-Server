@@ -1,4 +1,4 @@
-# Perspective Server
+# afm-server
 
 A macOS menu bar application that bridges Apple Intelligence (on-device Foundation Models) with OpenAI and Ollama-compatible API endpoints. Run AI locally on your Mac without sending data to external servers.
 
@@ -30,10 +30,10 @@ Built by [Techopolis](https://techopolisonline.com).
 
 ### Download
 
-Download the latest release from the [Releases page](https://github.com/Techopolis/Perspective-Server/releases).
+Download the latest release from the [Releases page](https://github.com/Techopolis/afm-server/releases).
 
-1. Download `PerspectiveServer-X.X.zip` from the latest release
-2. Unzip and move `Perspective Server.app` to `/Applications`
+1. Download `afm-server-X.X.zip` from the latest release
+2. Unzip and move `afm-server.app` to `/Applications`
 3. Launch from Applications — the server starts automatically
 
 The app is signed with Developer ID and notarized by Apple, so it will pass Gatekeeper without issues. Sparkle auto-updater checks for new versions daily and notifies you when an update is available.
@@ -43,14 +43,14 @@ The app is signed with Developer ID and notarized by Apple, so it will pass Gate
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/Techopolis/Perspective-Server.git
-cd Perspective-Server
+git clone https://github.com/Techopolis/afm-server.git
+cd afm-server
 ```
 
 2. Open the project in Xcode:
 
 ```bash
-open "Perspective Server.xcodeproj"
+open "afm-server.xcodeproj"
 ```
 
 3. Select your development team in the project settings under Signing and Capabilities.
@@ -60,7 +60,7 @@ open "Perspective Server.xcodeproj"
 ### Building from Command Line
 
 ```bash
-xcodebuild -project "Perspective Server.xcodeproj" -scheme "Perspective Server" -configuration Debug build
+xcodebuild -project "afm-server.xcodeproj" -scheme "afm-server" -configuration Debug build
 ```
 
 The built app will be in `~/Library/Developer/Xcode/DerivedData/`.
@@ -69,7 +69,7 @@ The built app will be in `~/Library/Developer/Xcode/DerivedData/`.
 
 ### Starting the Server
 
-1. Launch Perspective Server. The app appears in your menu bar with a lightning bolt icon.
+1. Launch afm-server. The app appears in your menu bar with a lightning bolt icon.
 2. The server starts automatically on port 11435 when the app launches.
 3. Click the menu bar icon to view server status and controls.
 4. The status indicator is green when the server is running.
@@ -272,11 +272,11 @@ curl -X POST http://127.0.0.1:11435/debug/echo \
 
 ### Xcode 26 Intelligence Mode
 
-Xcode 26 introduces Intelligence Mode, an AI-powered assistant with Agent Mode that provides context-aware code suggestions. You can configure Xcode to use Perspective Server as a locally hosted model provider since it implements the Ollama-compatible API that Xcode expects.
+Xcode 26 introduces Intelligence Mode, an AI-powered assistant with Agent Mode that provides context-aware code suggestions. You can configure Xcode to use afm-server as a locally hosted model provider since it implements the Ollama-compatible API that Xcode expects.
 
 #### Setup Instructions
 
-1. Launch Perspective Server and ensure the server is running (green status indicator in menu bar).
+1. Launch afm-server and ensure the server is running (green status indicator in menu bar).
 
 2. Open Xcode 26 and go to **Xcode > Settings** (or press Cmd + ,).
 
@@ -289,7 +289,7 @@ Xcode 26 introduces Intelligence Mode, an AI-powered assistant with Agent Mode t
 | Setting | Value |
 |---------|-------|
 | Port | 11435 (or your configured port) |
-| Description | Perspective Server |
+| Description | afm-server |
 
 6. Click **Add** to save the configuration.
 
@@ -297,7 +297,7 @@ Xcode 26 introduces Intelligence Mode, an AI-powered assistant with Agent Mode t
 
 8. Select **apple.local:latest** as your active model.
 
-**Important**: If you have Ollama running on port 11434, there is no conflict since Perspective Server defaults to port 11435. If you changed the port, make sure it matches your Xcode configuration.
+**Important**: If you have Ollama running on port 11434, there is no conflict since afm-server defaults to port 11435. If you changed the port, make sure it matches your Xcode configuration.
 
 #### Using Intelligence Mode
 
@@ -307,7 +307,7 @@ Once configured, you can access Intelligence Mode in Xcode:
 - Use Agent Mode to get context-aware suggestions based on your project
 - The AI can assist with code generation, refactoring, and explanations
 
-#### Benefits of Using Perspective Server with Xcode
+#### Benefits of Using afm-server with Xcode
 
 - **Privacy**: All processing happens on-device using Apple Intelligence
 - **No API Costs**: Unlike cloud-hosted models, there are no usage fees
@@ -318,7 +318,7 @@ Once configured, you can access Intelligence Mode in Xcode:
 
 If the model does not appear in Xcode:
 
-1. Verify Perspective Server is running (check the menu bar icon)
+1. Verify afm-server is running (check the menu bar icon)
 2. Confirm the port number matches your server configuration (default is 11435)
 3. Make sure no other service is using the same port
 4. Restart Xcode after adding the model provider
@@ -358,7 +358,7 @@ For comparison, you can also configure cloud-hosted models in Xcode 26 Intellige
 
 Visit [OpenRouter.ai](https://openrouter.ai) to get an API key that provides access to models from Anthropic, OpenAI, Google, and others through a single endpoint.
 
-However, Perspective Server offers the advantage of completely local, private AI assistance without requiring API keys or incurring usage costs.
+However, afm-server offers the advantage of completely local, private AI assistance without requiring API keys or incurring usage costs.
 
 ### Cursor IDE
 
@@ -377,7 +377,7 @@ Add to your Continue configuration:
 {
   "models": [
     {
-      "title": "Apple Intelligence (Perspective Server)",
+      "title": "Apple Intelligence (afm-server)",
       "provider": "openai",
       "model": "apple.local",
       "apiBase": "http://127.0.0.1:11435/v1"
@@ -388,7 +388,7 @@ Add to your Continue configuration:
 
 ### Other OpenAI-Compatible Clients
 
-Any application that supports custom OpenAI API endpoints can use Perspective Server:
+Any application that supports custom OpenAI API endpoints can use afm-server:
 
 - Set the API base URL to `http://127.0.0.1:11435/v1`
 - Use `apple.local` as the model name
@@ -471,7 +471,7 @@ If every message in a conversation gets refused after a single guardrail hit, th
 
 ### Port conflicts
 
-Perspective Server defaults to port 11435. If you need to use a different port, change it in the menu bar controls before starting the server.
+afm-server defaults to port 11435. If you need to use a different port, change it in the menu bar controls before starting the server.
 
 ## Contributing
 

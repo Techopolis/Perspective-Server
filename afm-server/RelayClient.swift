@@ -1,6 +1,6 @@
 //
 //  RelayClient.swift
-//  Perspective Server
+//  afm-server
 //
 //  WebSocket relay client that connects to the Perspective Intelligence Web
 //  backend, allowing remote browser users to chat with the local AI server.
@@ -40,7 +40,7 @@ enum RelayStatus: Sendable, Equatable {
 actor RelayClient {
     static let shared = RelayClient()
 
-    private let logger = Logger(subsystem: "com.example.PerspectiveServer", category: "RelayClient")
+    private let logger = Logger(subsystem: "online.techopolis.afm-server", category: "RelayClient")
     private let relayURL = URL(string: "wss://perspective-intelligence-web-cciod.ondigitalocean.app/api/relay/connect")!
 
     private var webSocketTask: URLSessionWebSocketTask?

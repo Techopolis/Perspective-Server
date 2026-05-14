@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  Perspective Server
+//  afm-server
 //
 //  Created by Michael Doise on 9/14/25.
 //

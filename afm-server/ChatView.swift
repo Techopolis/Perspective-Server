@@ -1,6 +1,6 @@
 //
 //  ChatView.swift
-//  Perspective Server
+//  afm-server
 //
 //  Created by GitHub Copilot on 9/14/25.
 //

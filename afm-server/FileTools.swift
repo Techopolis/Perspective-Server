@@ -1,6 +1,6 @@
 //
 //  FileTools.swift
-//  Perspective Server
+//  afm-server
 //
 //  File operation tools for Apple Foundation Models
 //

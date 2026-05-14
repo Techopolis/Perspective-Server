@@ -1,6 +1,6 @@
 //
-//  Perspective_ServerApp.swift
-//  Perspective Server
+//  AFMServerApp.swift
+//  afm-server
 //
 //  Created by Michael Doise on 9/14/25.
 //
@@ -70,7 +70,7 @@ extension Notification.Name {
 #endif
 
 @main
-struct Perspective_ServerApp: App {
+struct AFMServerApp: App {
     #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var serverController = ServerController()
@@ -125,7 +125,7 @@ struct Perspective_ServerApp: App {
         }
         
         // Menu Bar Extra
-        MenuBarExtra("Perspective Server", systemImage: "bolt.horizontal.circle") {
+        MenuBarExtra("afm-server", systemImage: "bolt.horizontal.circle") {
             MenuBarContentView()
                 .environmentObject(serverController)
                 .task {

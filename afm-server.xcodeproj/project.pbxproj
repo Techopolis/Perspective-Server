@@ -11,26 +11,26 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		9DF1C0842E774697000D654F /* Perspective Server.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Perspective Server.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9DF1C0842E774697000D654F /* afm-server.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "afm-server.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		F1A2B3C40000000000000004 /* Exceptions for "Perspective Server" folder in "Perspective Server" target */ = {
+		F1A2B3C40000000000000004 /* Exceptions for "afm-server" folder in "afm-server" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 9DF1C0832E774697000D654F /* Perspective Server */;
+			target = 9DF1C0832E774697000D654F /* afm-server */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		9DF1C0862E774697000D654F /* Perspective Server */ = {
+		9DF1C0862E774697000D654F /* afm-server */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				F1A2B3C40000000000000004 /* Exceptions for "Perspective Server" folder in "Perspective Server" target */,
+				F1A2B3C40000000000000004 /* Exceptions for "afm-server" folder in "afm-server" target */,
 			);
-			path = "Perspective Server";
+			path = "afm-server";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -50,7 +50,7 @@
 		9DF1C07B2E774697000D654F = {
 			isa = PBXGroup;
 			children = (
-				9DF1C0862E774697000D654F /* Perspective Server */,
+				9DF1C0862E774697000D654F /* afm-server */,
 				9DF1C0852E774697000D654F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -58,7 +58,7 @@
 		9DF1C0852E774697000D654F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				9DF1C0842E774697000D654F /* Perspective Server.app */,
+				9DF1C0842E774697000D654F /* afm-server.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,9 +66,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		9DF1C0832E774697000D654F /* Perspective Server */ = {
+		9DF1C0832E774697000D654F /* afm-server */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9DF1C08F2E774699000D654F /* Build configuration list for PBXNativeTarget "Perspective Server" */;
+			buildConfigurationList = 9DF1C08F2E774699000D654F /* Build configuration list for PBXNativeTarget "afm-server" */;
 			buildPhases = (
 				9DF1C0802E774697000D654F /* Sources */,
 				9DF1C0812E774697000D654F /* Frameworks */,
@@ -79,14 +79,14 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				9DF1C0862E774697000D654F /* Perspective Server */,
+				9DF1C0862E774697000D654F /* afm-server */,
 			);
-			name = "Perspective Server";
+			name = "afm-server";
 			packageProductDependencies = (
 				F1A2B3C40000000000000002 /* Sparkle */,
 			);
-			productName = "Perspective Server";
-			productReference = 9DF1C0842E774697000D654F /* Perspective Server.app */;
+			productName = "afm-server";
+			productReference = 9DF1C0842E774697000D654F /* afm-server.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -104,7 +104,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 9DF1C07F2E774697000D654F /* Build configuration list for PBXProject "Perspective Server" */;
+			buildConfigurationList = 9DF1C07F2E774697000D654F /* Build configuration list for PBXProject "afm-server" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -121,7 +121,7 @@
 				F1A2B3C40000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			targets = (
-				9DF1C0832E774697000D654F /* Perspective Server */,
+				9DF1C0832E774697000D654F /* afm-server */,
 			);
 		};
 /* End PBXProject section */
@@ -268,7 +268,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Perspective Server/Perspective_Server.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "afm-server/afm-server.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = M9SNPTXA44;
@@ -277,9 +277,9 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Perspective Server/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Perspective Server";
-				INFOPLIST_KEY_CFBundleName = "Perspective Server";
+				INFOPLIST_FILE = "afm-server/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "afm-server";
+				INFOPLIST_KEY_CFBundleName = "afm-server";
 				INFOPLIST_KEY_LSUIElement = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -296,7 +296,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.1.0-beta.2;
-				PRODUCT_BUNDLE_IDENTIFIER = "online.techopolis.Perspective-Server";
+				PRODUCT_BUNDLE_IDENTIFIER = "online.techopolis.afm-server";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -316,7 +316,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Perspective Server/Perspective_Server.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "afm-server/afm-server.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = M9SNPTXA44;
@@ -325,9 +325,9 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Perspective Server/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Perspective Server";
-				INFOPLIST_KEY_CFBundleName = "Perspective Server";
+				INFOPLIST_FILE = "afm-server/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "afm-server";
+				INFOPLIST_KEY_CFBundleName = "afm-server";
 				INFOPLIST_KEY_LSUIElement = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -344,7 +344,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.1.0-beta.2;
-				PRODUCT_BUNDLE_IDENTIFIER = "online.techopolis.Perspective-Server";
+				PRODUCT_BUNDLE_IDENTIFIER = "online.techopolis.afm-server";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -363,7 +363,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		9DF1C07F2E774697000D654F /* Build configuration list for PBXProject "Perspective Server" */ = {
+		9DF1C07F2E774697000D654F /* Build configuration list for PBXProject "afm-server" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9DF1C08D2E774699000D654F /* Debug */,
@@ -372,7 +372,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9DF1C08F2E774699000D654F /* Build configuration list for PBXNativeTarget "Perspective Server" */ = {
+		9DF1C08F2E774699000D654F /* Build configuration list for PBXNativeTarget "afm-server" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9DF1C0902E774699000D654F /* Debug */,

@@ -1,6 +1,6 @@
 //
 //  ServerDashboardView.swift
-//  Perspective Server
+//  afm-server
 //
 //  Main dashboard UI for server management
 //
@@ -155,7 +155,7 @@ struct ServerDashboardView: View {
             }
             
             VStack(alignment: .leading, spacing: 4) {
-                Text("Perspective Server")
+                Text("afm-server")
                     .font(.system(size: 26, weight: .bold))
                     .foregroundColor(.primary)
                 

@@ -1,6 +1,6 @@
 //
 //  MenuBarContentView.swift
-//  Perspective Server
+//  afm-server
 //
 //  Created by GitHub Copilot on 9/14/25.
 //
@@ -32,7 +32,7 @@ struct MenuBarContentView: View {
                 NSApp.sendAction(#selector(AppDelegate.checkForUpdates), to: nil, from: nil)
             }
             Divider()
-            Button("Quit Perspective Server") {
+            Button("Quit afm-server") {
                 NSApplication.shared.terminate(nil)
             }
         }

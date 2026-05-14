@@ -5,7 +5,7 @@ import OSLog
 actor LocalHTTPServer {
     static let shared = LocalHTTPServer()
 
-    private let logger = Logger(subsystem: "com.example.PerspectiveServer", category: "LocalHTTPServer")
+    private let logger = Logger(subsystem: "online.techopolis.afm-server", category: "LocalHTTPServer")
     private var listener: NWListener?
     private var connections: Set<ConnectionWrapper> = []
 
@@ -38,7 +38,7 @@ actor LocalHTTPServer {
 
     private static let tokenDirectory: URL = {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return appSupport.appendingPathComponent("Perspective Server")
+        return appSupport.appendingPathComponent("afm-server")
     }()
 
     static let tokenFileURL: URL = {
@@ -264,7 +264,7 @@ actor LocalHTTPServer {
     nonisolated func handleRequest(_ request: HTTPRequest) async -> ServerResponse {
         // Correlate logs for this request
         let rid = String(UUID().uuidString.prefix(8))
-        let logger = Logger(subsystem: "com.example.PerspectiveServer", category: "LocalHTTPServer")
+        let logger = Logger(subsystem: "online.techopolis.afm-server", category: "LocalHTTPServer")
 
         let _ = await self.incrementActiveRequests()
         defer { Task { let _ = await self.decrementActiveRequests() } }
@@ -310,7 +310,7 @@ actor LocalHTTPServer {
                 let obj: [String: Any] = [
                     "paired": true,
                     "port": serverPort,
-                    "server": "Perspective Intelligence Server",
+                    "server": "afm-server",
                     "apiToken": await self.getAuthToken() ?? "",
                 ]
                 let data = (try? JSONSerialization.data(withJSONObject: obj, options: [])) ?? Data()
@@ -449,7 +449,7 @@ actor LocalHTTPServer {
                 "/debug/echo"
             ]
             let obj: [String: Any] = [
-                "name": "Perspective Server Local API",
+                "name": "afm-server Local API",
                 "endpoints": endpoints
             ]
             let data = (try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted])) ?? Data()
@@ -992,7 +992,7 @@ nonisolated private final class ConnectionWrapper: @unchecked Sendable, Hashable
     static func == (lhs: ConnectionWrapper, rhs: ConnectionWrapper) -> Bool { lhs === rhs }
     func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) }
 
-    private let logger = Logger(subsystem: "com.example.PerspectiveServer", category: "Connection")
+    private let logger = Logger(subsystem: "online.techopolis.afm-server", category: "Connection")
     private let connection: NWConnection
     private unowned let server: LocalHTTPServer
     private var buffer = Data()

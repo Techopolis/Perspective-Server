@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
     <channel>
-        <title>Perspective Server Updates</title>
+        <title>afm-server Updates</title>
         <language>en</language>
         <item>
             <title>Version 1.1.0 Beta 2</title>
@@ -11,7 +11,7 @@
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <sparkle:channel>beta</sparkle:channel>
             <description><![CDATA[
-                <h2>Perspective Server 1.1.0 Beta 2</h2>
+                <h2>afm-server 1.1.0 Beta 2</h2>
                 <p>This beta is a targeted security release for GitHub issue #1, <strong>[Bug] Open web server manipulable by any web page</strong>. It is intended to close that localhost exposure and stabilize the affected client flows.</p>
                 <ul>
                     <li>Restricts the local server to loopback access while preserving both IPv4 and IPv6 localhost connectivity</li>
@@ -22,7 +22,7 @@
                 <p>Security issue reported by Brian Sniffen.</p>
             ]]></description>
             <enclosure
-                url="https://github.com/Techopolis/Perspective-Server/releases/download/v1.1.0-beta.2/PerspectiveServer-1.1.0-beta.2.zip"
+                url="https://github.com/Techopolis/afm-server/releases/download/v1.1.0-beta.2/afm-server-1.1.0-beta.2.zip"
                 type="application/octet-stream"
                 sparkle:edSignature="HeSDe+wqEK/edVCaZWq7NxrvLQT6OwqVUITSCX7t5YP+zlb/403arHRn6PkRQOg9JD6uuji5Tk3HkvpZiPrQDA=="
                 length="1892226"
@@ -35,11 +35,11 @@
             <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <description><![CDATA[
-                <h2>Perspective Server 1.0</h2>
+                <h2>afm-server 1.0</h2>
                 <p>Initial release with Sparkle auto-updater, on-device AI inference, and session management.</p>
             ]]></description>
             <enclosure
-                url="https://github.com/Techopolis/Perspective-Server/releases/download/v1.0/PerspectiveServer-1.0.zip"
+                url="https://github.com/Techopolis/afm-server/releases/download/v1.0/afm-server-1.0.zip"
                 type="application/octet-stream"
                 sparkle:edSignature="5RKmjU3r12/unjCqetgYxTO3MLEcoOZ7yfbPTNTXiGyE4HuIYhbNjpWCrIEM0PlNhTHZuiYt7Ax4rAku8vEBBQ=="
                 length="1784209"

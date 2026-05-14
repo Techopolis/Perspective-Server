@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
 	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/Techopolis/Perspective-Server/main/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/Techopolis/afm-server/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>8Mm7t6gC2cKvvPsxI9k+SV82pQnIZ8/NHxW80lMETiU=</string>
 	<key>SUEnableAutomaticChecks</key>

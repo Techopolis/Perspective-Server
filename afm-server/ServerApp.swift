@@ -6,9 +6,9 @@ struct ServerApp: App {
     @StateObject private var serverController = ServerController()
 
     var body: some Scene {
-        MenuBarExtra("PI Server", systemImage: "bolt.horizontal.circle") {
+        MenuBarExtra("afm-server", systemImage: "bolt.horizontal.circle") {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Perspective Intelligence Server")
+                Text("afm-server")
                     .font(.headline)
 
                 Text("Runs AI models on your Mac so you can chat privately from any browser. No cloud required.")

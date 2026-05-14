@@ -1,13 +1,13 @@
 //
 //  ServerMetrics.swift
-//  Perspective Server
+//  afm-server
 //
 //  Tracks server usage metrics: requests, tokens, time-to-first-token.
 //
 
 import Foundation
 
-/// Centralized metrics collector for the Perspective Server.
+/// Centralized metrics collector for the afm-server.
 /// All properties are isolated to this actor for thread safety.
 actor ServerMetrics {
     static let shared = ServerMetrics()

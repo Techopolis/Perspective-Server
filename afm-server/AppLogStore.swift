@@ -77,7 +77,7 @@ final class AppLogStore: ObservableObject {
 }
 
 enum AppLog {
-    private static let logger = Logger(subsystem: "com.example.PerspectiveServer", category: "AppLog")
+    private static let logger = Logger(subsystem: "online.techopolis.afm-server", category: "AppLog")
 
     static func debug(_ message: String, source: String = "app") {
         write(message, severity: .debug, source: source)
